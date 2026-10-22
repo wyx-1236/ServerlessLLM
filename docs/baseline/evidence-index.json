@@ -2,7 +2,7 @@
   "schema_version": 1,
   "collection": "engine-route-evaluation-20261016",
   "storage": "External historical archives, not committed to this fork",
-  "acceptance_boundary": "These are historical prototype observations, not acceptance of any current fork commit",
+  "acceptance_boundary": "Historical archives remain prototype observations; current integration qualifications below bind exact executable commits and bounded runtime combinations.",
   "archives": [
     {
       "name": "first-gpu-evidence.zip",
@@ -45,7 +45,7 @@
     },
     {
       "executable_commit": "fef30ee9bab49fa7bf8b8b9ff53e60b9157ef4b3",
-      "status": "Stage B bounded checks passed; user stage review pending",
+      "status": "Stage B bounded checks passed and user stage review approved",
       "server": "inspur-gpu-12",
       "physical_gpu_indices": [
         1
@@ -97,6 +97,133 @@
       "evidence_location": "External engine-upgrade-20261022/stageB collection; local and server copies verified",
       "payload_evidence": "All 11 payload hashes rechecked remotely; large tensor payload retained on server; small archive includes metadata, references, logs and receipts",
       "acceptance_boundary": "Native Qwen3-0.6B preparation and independent offline Store restore only; not Controller/Ray/HTTP, lifecycle, migration, TP2, graph mode, model matrix or performance acceptance"
+    },
+    {
+      "batch": "20261022-090607",
+      "executable_commit": "8628d627a020caed55651c51c2c6026a29e146a8",
+      "server": "inspur-gpu-12",
+      "physical_gpu_indices": [
+        1
+      ],
+      "lock_mode": "soft",
+      "result": "Failed before engine startup: Store bound 127.0.0.1 but Ray worker used 127.0.0.2; fixed by namespace-scoped wildcard listener and both-address readiness checks",
+      "released": true,
+      "release": "soft unlock GPU 1; inactive unit, no owned PIDs/compute apps, 0 MiB",
+      "evidence_archive": "stage-c-evidence-20261022-090607.tgz",
+      "evidence_archive_sha256": "418d27bccae6891239944386ff5916bc9ff26bc1cd726eb721e40a1ec43ab74f"
+    },
+    {
+      "batch": "20261022-100718",
+      "executable_commit": "b49e75ec4efb89e440fd62c3610509fc96cadbd3",
+      "server": "inspur-gpu-12",
+      "physical_gpu_indices": [
+        1
+      ],
+      "lock_mode": "soft",
+      "result": "Failed model registration: control-node CPU=3 exhausted; fixed control=4/worker=4 within existing eight-CPU budget",
+      "released": true,
+      "release": "soft unlock GPU 1; inactive unit, no owned PIDs/compute apps, 0 MiB",
+      "evidence_archive": "stage-c-evidence-20261022-100718.tgz",
+      "evidence_archive_sha256": "d8c2072200242a031f74ab42586a75c3b71aba3a16cf71938243aa138c3f16a6"
+    },
+    {
+      "batch": "20261022-102037",
+      "executable_commit": "53d4d816189cabd0fb15dec20d9c3806fe56dc33",
+      "server": "inspur-gpu-12",
+      "physical_gpu_indices": [
+        1
+      ],
+      "lock_mode": "soft",
+      "result": "Nine initial service/lifecycle checks passed; HTTP submission concurrency alone did not establish four active backend requests",
+      "released": true,
+      "release": "soft unlock GPU 1; inactive unit, no owned PIDs/compute apps, 0 MiB",
+      "evidence_archive": "stage-c-evidence-20261022-102037.tgz",
+      "evidence_archive_sha256": "8b2ea4817dbda1fb832e57475f4f8d2c3b358e4a69e90eb909e4fef3c614a213"
+    },
+    {
+      "status": "Stage C bounded checks passed; awaiting user stage review",
+      "executable_commit": "1478c0acd6d5f8ceca87d4cd1c8cafcb5bc8510a",
+      "batch": "20261022-103635",
+      "server": "inspur-gpu-12",
+      "physical_gpu_indices": [
+        1
+      ],
+      "lock_mode": "soft",
+      "model": "Qwen/Qwen3-0.6B",
+      "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+      "dtype": "bfloat16",
+      "tensor_parallel_size": 1,
+      "enforce_eager": true,
+      "max_model_len": 512,
+      "max_num_seqs": 4,
+      "kv_cache_memory_bytes": 67108864,
+      "seed": 0,
+      "enable_prefix_caching": true,
+      "distributed_executor_backend": "mp",
+      "wheel_sha256": "3d83780758a9f91f0127bf746d24eab619a40fa4fdcd53ce44c74605d84b4569",
+      "artifact_manifest_sha256": "c6219429ad0a3912a178708a55ed1ea5789eba5b246d2f1db0f5e1a8a259dee1",
+      "environment": "Ubuntu 22.04; CPython 3.12.13; Torch 2.13.0+cu130; vLLM 0.31.0; Ray 2.48.0; CUDA 13.0; driver 610.57.04",
+      "isolation": {
+        "parent_network_namespace": 4026531840,
+        "network_namespace": 4026534306,
+        "interfaces": [
+          "lo"
+        ]
+      },
+      "ray_cpu_resources": {
+        "control": 4,
+        "worker": 4
+      },
+      "checks": {
+        "private_store": true,
+        "http_controller_ray_store_vllm": true,
+        "concurrent_unique_requests": true,
+        "error_then_recovery": true,
+        "four_simultaneous_backend_requests": true,
+        "ray_running_request_cancellation_recovery": true,
+        "real_active_graceful_stop": true,
+        "http_delete_awaited_shutdown": true,
+        "fresh_actor_restart": true,
+        "owned_worker_fault_controlled_recovery": true,
+        "real_init_failure_cleanup_recovery": true,
+        "real_active_forced_shutdown": true,
+        "controller_shutdown": true
+      },
+      "reference": {
+        "raw_prompt": "The capital of France is",
+        "text": " Paris. The capital of France is also",
+        "usage": {
+          "prompt_tokens": 5,
+          "completion_tokens": 8,
+          "total_tokens": 13
+        }
+      },
+      "concurrency_boundary": "Four submitted HTTP requests completed; separate direct Ray backend probe observed four active registry entries and four deterministic 64-token results. This is not a throughput or HTTP streaming qualification.",
+      "fault_boundary": "Worker PID 3463729, exact GPU UUID and current service cgroup verified with pidfd; controlled error in 1.014 s, explicit delete/re-registration recovery. Not automatic fault-tolerance or migration acceptance.",
+      "initialization_failure": {
+        "actor_pid": 3787260,
+        "kv_cache_memory_bytes": 1,
+        "marker": "No available memory for the cache blocks",
+        "evidence": "Only newly written failed actor logs; cleanup and fresh HTTP registration/output recovery passed"
+      },
+      "inherited_http_error_contract": "Invalid sampling and Worker errors are JSON error bodies with HTTP 200; this stage preserves the inherited status behavior.",
+      "cpu": {
+        "result": "294 passed",
+        "elapsed_seconds": 29.84,
+        "profile": "Local WSL CPU baseline suite",
+        "xml": "External stageC/fault-cpu-final.xml"
+      },
+      "ci": "https://github.com/wyx-1236/ServerlessLLM/actions/runs/39764341854",
+      "unit_runtime_seconds": 236.99,
+      "sampled_gpu_peak_mib": 2367,
+      "sampled_cgroup_memory_peak_bytes": 9676324864,
+      "release": "soft unlock GPU 1; inactive/dead unit, no owned PIDs, no compute applications, 0 MiB",
+      "platform_reservation": "User six-hour GPU 1 reservation unchanged; task workloads released only",
+      "evidence_archive": "stage-c-evidence-20261022-103635.tgz",
+      "evidence_archive_bytes": 151315,
+      "evidence_archive_sha256": "d1a9903a94ed47e80546989c5261f454d55a963485defb0c2ec57b7f6c579316",
+      "evidence_location": "External engine-upgrade-20261022/stageC collection; local and server archive hashes verified",
+      "acceptance_boundary": "One-host private two-node Ray cluster, one Qwen3-0.6B model, BF16/TP1/eager. Does not qualify original migration, TP2, graph, multi-model isolation, embedding GPU, other models, performance or final serving image."
     }
   ],
   "stage_a_sources": [
@@ -172,7 +299,7 @@
   },
   "stage_b_runtime_qualification": {
     "executable_commit": "fef30ee9bab49fa7bf8b8b9ff53e60b9157ef4b3",
-    "status": "Stage B bounded checks passed; user stage review pending",
+    "status": "Stage B bounded checks passed and user stage review approved",
     "server": "inspur-gpu-12",
     "physical_gpu_indices": [
       1
@@ -224,5 +351,90 @@
     "evidence_location": "External engine-upgrade-20261022/stageB collection; local and server copies verified",
     "payload_evidence": "All 11 payload hashes rechecked remotely; large tensor payload retained on server; small archive includes metadata, references, logs and receipts",
     "acceptance_boundary": "Native Qwen3-0.6B preparation and independent offline Store restore only; not Controller/Ray/HTTP, lifecycle, migration, TP2, graph mode, model matrix or performance acceptance"
+  },
+  "stage_c_runtime_qualification": {
+    "status": "Stage C bounded checks passed; awaiting user stage review",
+    "executable_commit": "1478c0acd6d5f8ceca87d4cd1c8cafcb5bc8510a",
+    "batch": "20261022-103635",
+    "server": "inspur-gpu-12",
+    "physical_gpu_indices": [
+      1
+    ],
+    "lock_mode": "soft",
+    "model": "Qwen/Qwen3-0.6B",
+    "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "dtype": "bfloat16",
+    "tensor_parallel_size": 1,
+    "enforce_eager": true,
+    "max_model_len": 512,
+    "max_num_seqs": 4,
+    "kv_cache_memory_bytes": 67108864,
+    "seed": 0,
+    "enable_prefix_caching": true,
+    "distributed_executor_backend": "mp",
+    "wheel_sha256": "3d83780758a9f91f0127bf746d24eab619a40fa4fdcd53ce44c74605d84b4569",
+    "artifact_manifest_sha256": "c6219429ad0a3912a178708a55ed1ea5789eba5b246d2f1db0f5e1a8a259dee1",
+    "environment": "Ubuntu 22.04; CPython 3.12.13; Torch 2.13.0+cu130; vLLM 0.31.0; Ray 2.48.0; CUDA 13.0; driver 610.57.04",
+    "isolation": {
+      "parent_network_namespace": 4026531840,
+      "network_namespace": 4026534306,
+      "interfaces": [
+        "lo"
+      ]
+    },
+    "ray_cpu_resources": {
+      "control": 4,
+      "worker": 4
+    },
+    "checks": {
+      "private_store": true,
+      "http_controller_ray_store_vllm": true,
+      "concurrent_unique_requests": true,
+      "error_then_recovery": true,
+      "four_simultaneous_backend_requests": true,
+      "ray_running_request_cancellation_recovery": true,
+      "real_active_graceful_stop": true,
+      "http_delete_awaited_shutdown": true,
+      "fresh_actor_restart": true,
+      "owned_worker_fault_controlled_recovery": true,
+      "real_init_failure_cleanup_recovery": true,
+      "real_active_forced_shutdown": true,
+      "controller_shutdown": true
+    },
+    "reference": {
+      "raw_prompt": "The capital of France is",
+      "text": " Paris. The capital of France is also",
+      "usage": {
+        "prompt_tokens": 5,
+        "completion_tokens": 8,
+        "total_tokens": 13
+      }
+    },
+    "concurrency_boundary": "Four submitted HTTP requests completed; separate direct Ray backend probe observed four active registry entries and four deterministic 64-token results. This is not a throughput or HTTP streaming qualification.",
+    "fault_boundary": "Worker PID 3463729, exact GPU UUID and current service cgroup verified with pidfd; controlled error in 1.014 s, explicit delete/re-registration recovery. Not automatic fault-tolerance or migration acceptance.",
+    "initialization_failure": {
+      "actor_pid": 3787260,
+      "kv_cache_memory_bytes": 1,
+      "marker": "No available memory for the cache blocks",
+      "evidence": "Only newly written failed actor logs; cleanup and fresh HTTP registration/output recovery passed"
+    },
+    "inherited_http_error_contract": "Invalid sampling and Worker errors are JSON error bodies with HTTP 200; this stage preserves the inherited status behavior.",
+    "cpu": {
+      "result": "294 passed",
+      "elapsed_seconds": 29.84,
+      "profile": "Local WSL CPU baseline suite",
+      "xml": "External stageC/fault-cpu-final.xml"
+    },
+    "ci": "https://github.com/wyx-1236/ServerlessLLM/actions/runs/39764341854",
+    "unit_runtime_seconds": 236.99,
+    "sampled_gpu_peak_mib": 2367,
+    "sampled_cgroup_memory_peak_bytes": 9676324864,
+    "release": "soft unlock GPU 1; inactive/dead unit, no owned PIDs, no compute applications, 0 MiB",
+    "platform_reservation": "User six-hour GPU 1 reservation unchanged; task workloads released only",
+    "evidence_archive": "stage-c-evidence-20261022-103635.tgz",
+    "evidence_archive_bytes": 151315,
+    "evidence_archive_sha256": "d1a9903a94ed47e80546989c5261f454d55a963485defb0c2ec57b7f6c579316",
+    "evidence_location": "External engine-upgrade-20261022/stageC collection; local and server archive hashes verified",
+    "acceptance_boundary": "One-host private two-node Ray cluster, one Qwen3-0.6B model, BF16/TP1/eager. Does not qualify original migration, TP2, graph, multi-model isolation, embedding GPU, other models, performance or final serving image."
   }
 }

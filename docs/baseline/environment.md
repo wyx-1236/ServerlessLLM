@@ -83,3 +83,12 @@ CPU 张量测试使用独立的 hash 锁 `tests/baseline/requirements-tensor-cpu
 包含 Torch CPU build；不修改 serving 的 `uv.lock`。安装和测试命令见
 [测试入口](../../tests/baseline/README.md#cpu-torch-tensor-profile)。轻量 profile
 继续要求没有 Torch/vLLM；CI 显式要求 g++，避免原生磁盘 writer 测试静默跳过。
+
+## Bounded server qualification
+
+The native Store pipeline (B) and the one-model service/lifecycle path (C) have
+separate executable and wheel identities in [evidence-index.json](evidence-index.json).
+Stage C used Ubuntu 22.04, Python 3.12.13, Torch 2.13.0+cu130, vLLM 0.31.0,
+Ray 2.48.0, CUDA 13.0 and driver 610.57.04. Its wheel changes the Python loader
+to accept an explicit Store root; both native extension binaries match the
+qualified B wheel. This server environment is not a built final serving image.

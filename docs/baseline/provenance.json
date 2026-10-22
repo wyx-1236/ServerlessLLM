@@ -16,7 +16,7 @@
     "basis": "Bounded historical engine-route research, not current integration acceptance",
     "dependency_lock": "uv.lock",
     "dependency_lock_sha256": "b95c64f6357b653f3e1e45e7dddfe4b3efdcd8f9ae9ef926fce82dd7be025ec0",
-    "environment_scope": "Linux x86_64, CPython 3.12; resolved candidate, native/engine acceptance remains pending"
+    "environment_scope": "Linux x86_64, CPython 3.12; bounded native Store and Qwen3-0.6B BF16/TP1/eager service qualification recorded in evidence-index.json; final image and broader combinations pending"
   },
   "design_source": {
     "repository_document": "docs/plans/serverlessllm-vllm-upgrade/README.md",
@@ -46,7 +46,7 @@
     "adopted_source_changes": []
   },
   "stage_b_candidate": {
-    "status": "Stage B bounded native Store verification passed on fef30ee; awaiting user stage review",
+    "status": "Stage B bounded checks passed and user stage review approved",
     "components": [
       "Checked native O_DIRECT writer finalization and failure propagation",
       "Versioned raw-storage and logical tensor/buffer/alias layout",
@@ -57,10 +57,23 @@
     ],
     "historical_adaptation": "Research provided the Worker-extension and persistent-buffer restore approach; production contracts were reimplemented with explicit identity, bounds, cleanup and failure tests, without applying the historical engine patch",
     "tensor_test_profile": "tests/baseline/requirements-tensor-cpu.txt",
-    "qualification_remaining": "Controller/Scheduler/Router/Ray backend/HTTP and lifecycle in C; original migration and TP2 in D; broader models and metrics in E; final serving image remains unbuilt",
+    "qualification_remaining": "Stage C passed bounded service checks, user review pending; original migration and TP2 in D; broader models and metrics in E; final serving image remains unbuilt",
     "runtime_evidence": "evidence-index.json#stage_b_runtime_qualification",
     "tested_executable_commit": "fef30ee9bab49fa7bf8b8b9ff53e60b9157ef4b3"
   },
-  "code_scope": "Stage A CPU configuration and lock; Stage B writer/plugin/artifact/preparation/registration candidate. Serving backend and migration remain pending stages C/D.",
-  "gpu_usage": "Four explicitly approved soft-lock GPU 1 batches on inspur-gpu-12: three failures preserved, then Stage B bounded checks passed in 20261022-082738. Every batch stopped and released; the successful batch returned to 0 MiB with no compute processes."
+  "code_scope": "A environment/configuration; B native writer/reader/plugin/artifact pipeline; C bounded service and lifecycle. Original migration/TP2 and broader model/metric release remain D/E.",
+  "gpu_usage": "Four Stage B batches and four Stage C batches, explicitly approved soft lock GPU 1 on inspur-gpu-12. Failures preserved; B and bounded C passed. All task workloads released with no owned PIDs, no compute apps and 0 MiB; user six-hour platform reservation unchanged.",
+  "stage_c_candidate": {
+    "status": "Stage C bounded checks passed; awaiting user stage review",
+    "tested_executable_commit": "1478c0acd6d5f8ceca87d4cd1c8cafcb5bc8510a",
+    "components": [
+      "Pinned vLLM compatibility and explicit partial-engine cleanup",
+      "Atomic request ownership, cancellation, graceful drain and forced shutdown",
+      "Controller/Router/FCFS resource ownership and actor cleanup",
+      "Explicit Store root/address and committed artifact identity",
+      "Private HTTP/Ray/native Store qualification including real Worker and initialization faults"
+    ],
+    "runtime_evidence": "evidence-index.json#stage_c_runtime_qualification",
+    "qualification_remaining": "One-host private two-node Ray cluster, one Qwen3-0.6B model, BF16/TP1/eager. Does not qualify original migration, TP2, graph, multi-model isolation, embedding GPU, other models, performance or final serving image."
+  }
 }

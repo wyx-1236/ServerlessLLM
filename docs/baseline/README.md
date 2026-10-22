@@ -1,7 +1,7 @@
 # ServerlessLLM-vLLM Baseline 工程入口
 
 本目录保存独立 Baseline 的升级设计、来源和证据索引。目标为 vLLM 0.31.0；
-当前提供工程、环境冻结和 CPU 契约入口，不代表新引擎、Store 或服务全链已完成升级。
+阶段 B 的原生 Store 流水线与阶段 C 的限定服务链已实测通过；阶段 C 等待用户审查，迁移、TP2 和模型/性能矩阵仍待后续阶段。
 
 - [权威升级设计](engine-upgrade.md)：架构、兼容边界、阶段与验证要求。
 - [仓库建立指南](repository-bootstrap.md)：Fork、独立 clone、固定上游及分支。
@@ -10,6 +10,7 @@
 - [历史证据索引](evidence-index.json)：外部归档摘要及适用范围。
 - [契约与补丁审计](patch-audit.md)：继承行为、缺陷与配置映射边界。
 - [Linux 环境](environment.md)：依赖锁、CPU 检查及候选镜像配方。
+- [服务生命周期](service-lifecycle.md)：后端/控制面所有权、关闭和手动限定验证入口。
 - [Store 产物契约](store-artifact.md)：字节布局、逻辑张量视图和提交/复用校验。
 
 ## 仓库与部署身份
@@ -22,8 +23,9 @@
 
 当前提供无 GPU 的环境/契约检查入口；阶段 B 的 Qwen3-0.6B BF16/TP1/eager
 原生导出与独立禁网 native Store 恢复已实测通过，执行身份和限制见
-[兼容范围](compatibility-matrix.md)。尚未提供已验收的新版 serving 启动命令。
-后续通过验证的模型准备、运行与停止方式在这里补齐；部署绑定确定 commit/tag。
+[兼容范围](compatibility-matrix.md)。阶段 C 在提交 `1478c0a` 上完成 13 项限定服务/生命周期检查；入口为
+`scripts/baseline/qualify_service.py`，必须由获批的有界隔离 runner 执行，
+具体前提见 [服务生命周期](service-lifecycle.md)。这不是最终 serving 镜像或通用部署资格；部署绑定确定 commit/tag。
 模型权重、Store 产物、依赖缓存和大型结果保存在工程外，不纳入 Git。
 
 ## 必须保留的执行关卡
@@ -39,7 +41,7 @@
 核验后报告释放状态，等待用户确认再继续任何项目工作。空闲卡不等于获批。
 
 继承的 GPU workflow 不得通过标签、手工触发、runner 注册或后台作业绕过上述
-审批。本阶段没有启动 workflow、注册 self-hosted runner 或使用 GPU。
+审批。运行证据分别记录获批 GPU 批次；未通过 workflow 或 self-hosted runner 绕过审批。
 
 ## 与其他工程的边界
 

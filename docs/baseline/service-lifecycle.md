@@ -44,3 +44,22 @@ KV-memory error in the failed actor's newly written logs. It never reserves GPUs
 or authorizes another batch. CPU tests and source review do not qualify GPU
 serving, Worker failure recovery, migration, TP2 or a general model matrix;
 acceptance remains tied to separately archived execution and cleanup evidence.
+
+## Bounded runtime qualification
+
+Executable commit `1478c0acd6d5f8ceca87d4cd1c8cafcb5bc8510a` passed
+all 13 manual checks in batch `20261022-103635`: Qwen3-0.6B BF16, TP1,
+eager, max length 512, one private Store and two Ray nodes on one host/GPU.
+Four direct backend requests were simultaneously present in the active registry;
+HTTP submission concurrency is recorded separately. A Worker fault returned an
+error within 1.014 seconds; recovery used explicit deletion/re-registration.
+The actual initialization failure used a one-byte KV budget and required its
+own actor's new KV-memory error log before accepting cleanup/recovery.
+The inherited HTTP error body/status convention remains unchanged.
+
+Independent cleanup found an inactive unit, no owned processes, no GPU compute
+applications and 0 MiB. See [evidence index](evidence-index.json#stage_c_runtime_qualification)
+for configuration, wheel/artifact hashes, archive SHA256 and exclusions.
+Stage C technical checks passed; user stage review is pending. Original migration,
+TP2, graph mode, multiple models, embedding GPU, performance and the final serving
+image remain unqualified by this batch.
