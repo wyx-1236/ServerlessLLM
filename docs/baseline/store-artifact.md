@@ -86,6 +86,15 @@ the writer before returning offsets, so Python cannot publish an index after
 an unnoticed destructor write failure. Destructor cleanup is best effort and
 does not substitute for explicit successful completion.
 
+The Store host reader consumes logical partition lengths rather than assuming
+that every file ends at a disk block boundary. Aligned bulk reads retain the
+direct-to-host-buffer path. Unaligned heads, tails or destinations use a bounded
+aligned scratch buffer and copy only logical bytes. Read requests keep 4096-byte
+alignment even when the final file read returns fewer bytes at EOF. Logical
+ranges may span more than two partitions; each chunk is published only after
+its complete range has been read. EINTR retries, while premature EOF and I/O
+errors fail the chunk. CPU reader tests do not qualify CUDA IPC or engine restore.
+
 ## Preparation entry and ownership
 
 `VllmModelDownloader.download_vllm_model` delegates to

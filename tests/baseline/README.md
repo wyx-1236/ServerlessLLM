@@ -25,6 +25,9 @@ Neither profile requests a GPU.
   It is not the full Controller/Scheduler/Store/engine chain.
 - `test_native_writer.py` compiles the production disk writer alone with Linux
   g++; it checks real O_DIRECT files and injected I/O failures without CUDA.
+- `test_native_reader.py` compiles the production partition reader without
+  CUDA; real O_DIRECT reads cover logical tails, unaligned destination/range
+  boundaries, multiple partitions, short reads, EINTR, I/O errors and truncation.
 - `test_artifact.py` checks byte inventories, tensor bounds, publication and
   reuse rejection. Its verifier doubles do not qualify engine restoration.
 - `test_store_load_contract.py` checks private Store endpoint forwarding and

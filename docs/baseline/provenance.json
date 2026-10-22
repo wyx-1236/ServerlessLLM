@@ -52,12 +52,13 @@
       "Versioned raw-storage and logical tensor/buffer/alias layout",
       "vLLM 0.31.0 lazy plugin, named Worker export and Store loader",
       "Frozen source and exact artifact identity, independent offline restore transaction",
-      "Temporary actor cleanup and preparation-before-Store registration"
+      "Temporary actor cleanup and preparation-before-Store registration",
+      "Aligned native O_DIRECT logical range reads across partition boundaries"
     ],
     "historical_adaptation": "Research provided the Worker-extension and persistent-buffer restore approach; production contracts were reimplemented with explicit identity, bounds, cleanup and failure tests, without applying the historical engine patch",
     "tensor_test_profile": "tests/baseline/requirements-tensor-cpu.txt",
-    "qualification_remaining": "Real frozen runtime/native extension ABI, server filesystem/network namespace, model export/restore, memory peaks and physical GPU cleanup"
+    "qualification_remaining": "Patched native reader GPU IPC, complete independent Store restore and exact tensor/token/logprob comparison remain unqualified; no Stage B acceptance"
   },
   "code_scope": "Stage A CPU configuration and lock; Stage B writer/plugin/artifact/preparation/registration candidate. Serving backend and migration remain pending stages C/D.",
-  "gpu_usage": "None"
+  "gpu_usage": "Three explicitly approved GPU 1 batches on inspur-gpu-12 ended without Stage B acceptance; all released and reported. See evidence-index.json for the model-run failure. The reader diagnosis/fix/build/tests used no GPU."
 }
