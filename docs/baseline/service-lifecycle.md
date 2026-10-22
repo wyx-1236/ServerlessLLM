@@ -32,7 +32,9 @@ The artifact byte layout and format identities are unchanged.
 `scripts/baseline/qualify_service.py` is a manual qualification executable,
 requiring a human-approved, deadline-bounded external cgroup runner. It creates
 an isolated network namespace's Store and a private two-node Ray cluster on one
-host, then exercises actual HTTP registration, generation, concurrency, errors,
+host. The Store listens on the namespace's interfaces only after independent
+namespace and loopback-only checks pass. Readiness probes cover both backend
+loopback and Ray-discovered worker addresses before Controller startup. It then exercises actual HTTP registration, generation, concurrency, errors,
 deletion, restart, graceful drain and forced shutdown. It never reserves GPUs
 or authorizes another batch. CPU tests and source review do not qualify GPU
 serving, Worker failure recovery, migration, TP2 or a general model matrix;

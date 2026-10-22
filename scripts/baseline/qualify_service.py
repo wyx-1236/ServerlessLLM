@@ -21,6 +21,20 @@ def write(path, value):
     path.write_text(json.dumps(value, indent=2), encoding="utf-8")
 
 
+def store_settings(storage):
+    return dict(
+        # The caller has already verified a private loopback-only netns.
+        # Both backend (.1) and Ray worker discovery (.2) use this Store.
+        host="0.0.0.0",
+        port=8073,
+        storage_path=str(storage),
+        registration_required=False,
+        mem_pool_size=2147483648,
+        chunk_size=67108864,
+        num_thread=2,
+    )
+
+
 async def qualify(config, output):
     import httpx
     import ray
@@ -52,9 +66,8 @@ async def qualify(config, output):
     (ray_root / "ray").mkdir(parents=True, exist_ok=True)
     # Both logical Ray nodes belong to this one bounded, single-GPU host job.
     store_code = (
-        "import asyncio; from sllm_store.server import serve; asyncio.run(serve(host='127.0.0.1',port=8073,storage_path="
-        + repr(str(storage))
-        + ",registration_required=False,mem_pool_size=2147483648,chunk_size=67108864,num_thread=2))"
+        "import asyncio; from sllm_store.server import serve; "
+        "asyncio.run(serve(**" + repr(store_settings(storage)) + "))"
     )
     try:
         with (output / "store.log").open("w") as log:
@@ -67,23 +80,27 @@ async def qualify(config, output):
 
         from sllm_store.proto import storage_pb2, storage_pb2_grpc
 
-        ready = False
-        with grpc.insecure_channel("127.0.0.1:8073") as channel:
-            stub = storage_pb2_grpc.StorageStub(channel)
-            for _ in range(60):
-                if store.poll() is not None:
-                    raise RuntimeError("Private Store exited")
-                try:
-                    response = stub.GetServerConfig(
-                        storage_pb2.GetServerConfigRequest(), timeout=0.5
-                    )
-                    ready = response.mem_pool_size == 2147483648
-                    if ready:
-                        break
-                except grpc.RpcError:
-                    await asyncio.sleep(0.5)
-        assert ready, "Private Store readiness timeout"
+        endpoints = ["127.0.0.1:8073", "127.0.0.2:8073"]
+        for address in endpoints:
+            ready = False
+            with grpc.insecure_channel(address) as channel:
+                stub = storage_pb2_grpc.StorageStub(channel)
+                for _ in range(60):
+                    if store.poll() is not None:
+                        raise RuntimeError("Private Store exited")
+                    try:
+                        response = stub.GetServerConfig(
+                            storage_pb2.GetServerConfigRequest(), timeout=0.5
+                        )
+                        ready = response.mem_pool_size == 2147483648
+                        if ready:
+                            break
+                    except grpc.RpcError:
+                        await asyncio.sleep(0.5)
+            assert ready, f"Private Store readiness timeout: {address}"
+        result["store_endpoints"] = endpoints
         result["checks"]["private_store"] = True
+        write(output / "service-result.json", result)
         common = dict(
             include_dashboard=False,
             object_store_memory=80 * 1024**2,
