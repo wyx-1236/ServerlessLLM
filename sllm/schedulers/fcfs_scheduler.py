@@ -39,6 +39,7 @@ class FcfsScheduler(SllmScheduler):
         self.metadata_lock = asyncio.Lock()
         self.worker_nodes = {}
         self.model_instance = {}
+        self.pending_allocations = {}
 
         self.loop = asyncio.get_running_loop()
 
@@ -61,6 +62,9 @@ class FcfsScheduler(SllmScheduler):
                 return
             self.running = False
         async with self.queue_lock:
+            for future in self.pending_allocations.values():
+                if not future.done():
+                    future.cancel()
             self.model_loading_queues = {}
         if self.loop_task is not None:
             await self.loop_task
@@ -78,13 +82,17 @@ class FcfsScheduler(SllmScheduler):
             self.model_loading_queues[model_name].append(
                 (time.time(), num_gpus, allocation_result)
             )
+            self.pending_allocations[(model_name, instance_id)] = (
+                allocation_result
+            )
         logger.info(f"Model {model_name} added to the loading queue")
-        node_id = await allocation_result
-        async with self.metadata_lock:
-            if model_name not in self.model_instance:
-                self.model_instance[model_name] = {}
-            self.model_instance[model_name][instance_id] = node_id
-        return node_id
+        try:
+            return await allocation_result
+        except asyncio.CancelledError:
+            await self.deallocate_resource(model_name, instance_id, resources)
+            raise
+        finally:
+            self.pending_allocations.pop((model_name, instance_id), None)
 
     async def deallocate_resource(
         self, model_name: str, instance_id: str, resources: Mapping
@@ -92,6 +100,15 @@ class FcfsScheduler(SllmScheduler):
         logger.info(f"Deallocating model {model_name} instance {instance_id}")
         # TODO: consider other resources
         num_gpus = resources.get("num_gpus", 0)
+        async with self.queue_lock:
+            pending = self.pending_allocations.pop(
+                (model_name, instance_id), None
+            )
+            if pending is not None:
+                if not pending.done():
+                    pending.cancel()
+                queue = self.model_loading_queues.get(model_name, [])
+                queue[:] = [entry for entry in queue if entry[2] is not pending]
         async with self.metadata_lock:
             if model_name not in self.model_instance:
                 logger.error(f"Model {model_name} not found")
@@ -162,18 +179,35 @@ class FcfsScheduler(SllmScheduler):
                                             allocation_result,
                                         )
                                     )
-                                    allocation_result.set_result(node_id)
+                                    async with self.metadata_lock:
+                                        owner = next(
+                                            (
+                                                key
+                                                for key, future in self.pending_allocations.items()
+                                                if future is allocation_result
+                                            ),
+                                            None,
+                                        )
+                                        if owner is None:
+                                            break
+                                        self.model_instance.setdefault(
+                                            owner[0], {}
+                                        )[owner[1]] = node_id
+                                        self.worker_nodes[node_id][
+                                            "free_gpu"
+                                        ] -= num_gpus
+                                        allocation_result.set_result(node_id)
                                 except ValueError:
                                     break
                             allocated = True
                             logger.info(
                                 f"Allocated node {node_id} for model {model_name}"
                             )
-                            node_info["free_gpu"] -= num_gpus
+                            # The local view shares committed resource state.
                             break
                     if not allocated:
                         logger.info(f"No available node for model {model_name}")
-                await self._update_worker_nodes(worker_nodes)
+                # Reservations were committed atomically before futures resolved.
 
             await asyncio.sleep(1)
 

@@ -584,3 +584,47 @@ def test_download_validates_artifact_without_distributed_state(
     (target / "rank_0/tensor.data_0").write_bytes(bytes([1]) * 8)
     with pytest.raises(ValueError, match="inventory|digest"):
         loader.download_model(model_config)
+
+
+@pytest.mark.parametrize("explicit_root", [False, True])
+def test_loader_store_root_layout(
+    loader_api, monkeypatch, tmp_path, explicit_root
+):
+    import torch
+
+    path = tmp_path / "vllm" / "model"
+    extra = {
+        "artifact_path": str(path),
+        "identity": identity(),
+        "store_address": "127.0.0.1:18073",
+    }
+    if explicit_root:
+        extra["store_root"] = str(tmp_path)
+    loader = loader_api.ServerlessLLMModelLoader(
+        types.SimpleNamespace(model_loader_extra_config=extra, device=None)
+    )
+    calls = []
+    transport = types.ModuleType("sllm_store.torch")
+    transport.load_dict = lambda *args, **kwargs: calls.append((args, kwargs))
+    monkeypatch.setitem(sys.modules, transport.__name__, transport)
+    loader._load_storage(path / "rank_0", torch.device("cuda:0"))
+    assert calls[0][0][0] == (
+        "vllm/model/rank_0" if explicit_root else "model/rank_0"
+    )
+    assert calls[0][1]["storage_path"] == str(
+        tmp_path if explicit_root else path.parent
+    )
+
+
+@pytest.mark.parametrize("root", ["relative", "/outside-model-root"])
+def test_loader_rejects_invalid_store_root(loader_api, tmp_path, root):
+    extra = {
+        "artifact_path": str(tmp_path / "model"),
+        "identity": identity(),
+        "store_address": "127.0.0.1:18073",
+        "store_root": root,
+    }
+    with pytest.raises(ValueError, match="store_root"):
+        loader_api.ServerlessLLMModelLoader(
+            types.SimpleNamespace(model_loader_extra_config=extra, device=None)
+        )

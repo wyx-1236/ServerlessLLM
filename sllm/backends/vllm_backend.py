@@ -16,32 +16,22 @@
 #  limitations under the license.                                              #
 # ---------------------------------------------------------------------------- #
 import asyncio
-import gc
-import inspect
 import logging
-import os
 import time
 import uuid
-from dataclasses import fields
-from typing import Any, Dict, List, Optional, Sequence, Union, cast
+from itertools import count
+from typing import Any, Dict, List, Optional
 
-import torch
 from vllm import (
-    AsyncEngineArgs,
-    AsyncLLMEngine,
     EmbeddingRequestOutput,
     PoolingParams,
-    PromptType,
     RequestOutput,
     SamplingParams,
 )
 from vllm.inputs import TokensPrompt
-from vllm.utils import Counter
 
-from sllm.backends.backend_utils import (
-    BackendStatus,
-    SllmBackend,
-)
+from sllm.backends import vllm_compat
+from sllm.backends.backend_utils import BackendStatus, SllmBackend
 
 logger = logging.getLogger("ray")
 
@@ -107,258 +97,273 @@ def process_embedding_output(
 
 
 class LLMEngineStatusDict:
-    def __init__(self):
-        self.status_dict: Dict[str, Union[RequestOutput, str]] = {}
-        self.lock = asyncio.Lock()
+    """Compatibility view of active requests, separate from debug history."""
 
-    async def update_status(
-        self, request_id: str, request_output: Union[RequestOutput, str]
-    ):
+    def __init__(self, active, lock):
+        self.status_dict = active
+        self.lock = lock
+
+    async def return_all_results(self):
         async with self.lock:
-            self.status_dict[request_id] = request_output
+            return [record["output"] for record in self.status_dict.values()]
 
-    async def delete_request(self, request_id: str):
+    async def return_all_request_ids(self):
         async with self.lock:
-            del self.status_dict[request_id]
+            return list(self.status_dict)
 
-    async def return_all_results(self) -> List[Union[RequestOutput, str]]:
-        async with self.lock:
-            return list(self.status_dict.values())
-
-    async def return_all_request_ids(self) -> List[str]:
-        async with self.lock:
-            return list(self.status_dict.keys())
-
-    async def request_count(self) -> int:
+    async def request_count(self):
         async with self.lock:
             return len(self.status_dict)
 
 
-# Note the GPU resource will be decided when the backend is created
 class VllmBackend(SllmBackend):
-    # This class implements every method in vllm.entrypoints.openai.api_server
-    # https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/openai/api_server.py
-    # except that we use ray.remote instead of @app and we also add a few new methods:
-    # - stop: stops every ongoing request and then stops the backend
-    # - get_current_tokens: returns a list of all ongoing request tokens
-    # - resume_kv_cache: resumes the key-value cache for the given requests
     def __init__(
         self, model: str, backend_config: Optional[Dict[str, Any]] = None
-    ) -> None:
+    ):
         if backend_config is None:
             raise ValueError("Backend config is missing")
-
-        self.status: BackendStatus = BackendStatus.UNINITIALIZED
+        self.status = BackendStatus.UNINITIALIZED
         self.status_lock = asyncio.Lock()
-        self.backend_config = backend_config
-        self.request_trace = LLMEngineStatusDict()
-        # if trace_debug is True, request trace will not be deleted after completion
+        self.backend_config = dict(backend_config)
         self.trace_debug = backend_config.get("trace_debug", False)
-        self.enforce_eager = backend_config.get("enforce_eager", False)
-        self.enable_prefix_caching = backend_config.get(
-            "enable_prefix_caching", True
-        )
-        self.task = backend_config.get("task", "auto")
-
-        async_engine_fields = {f.name for f in fields(AsyncEngineArgs)}
-        filtered_engine_config = {
-            k: v for k, v in backend_config.items() if k in async_engine_fields
-        }
-
-        load_format = backend_config.get("load_format")
-        torch_dtype = backend_config.get("torch_dtype")
-        if torch_dtype is not None:
-            filtered_engine_config["dtype"] = torch_dtype
-
-        if load_format is not None:
-            filtered_engine_config["load_format"] = load_format
-            filtered_engine_config["model"] = backend_config.get(
-                "pretrained_model_name_or_path"
-            )
-        else:
-            storage_path = os.getenv(
-                "STORAGE_PATH", os.path.expanduser("~/models")
-            )
-            model_path = os.path.join(storage_path, "vllm", model)
-            filtered_engine_config["model"] = model_path
-            filtered_engine_config["load_format"] = "serverless_llm"
-
-        # NOTE: Automatic enable prefix cachinging
-        filtered_engine_config["enforce_eager"] = self.enforce_eager
-        filtered_engine_config["enable_prefix_caching"] = (
-            self.enable_prefix_caching
-        )
-        filtered_engine_config["task"] = self.task
-
-        logger.info(
-            f"Creating new VLLM engine with config: {filtered_engine_config}"
-        )
-
-        self.engine_args = AsyncEngineArgs(**filtered_engine_config)
-
+        self.engine_args = vllm_compat.engine_args(model, backend_config)
         self.engine = None
+        self.active_requests = {}
+        self.request_history = {}
+        self.request_trace = LLMEngineStatusDict(
+            self.active_requests, self.status_lock
+        )
+        self._drained = asyncio.Event()
+        self._drained.set()
+        self._close_task = None
+        self._abort_task = None
+        self._request_counter = count()
 
-    async def init_backend(self) -> None:
+    async def init_backend(self):
         async with self.status_lock:
             if self.status != BackendStatus.UNINITIALIZED:
                 return
-            self.engine = AsyncLLMEngine.from_engine_args(self.engine_args)
+            try:
+                self.engine = vllm_compat.create(self.engine_args)
+            except BaseException:
+                await vllm_compat.close(self.engine)
+                self.engine = None
+                raise
             self.status = BackendStatus.RUNNING
 
-    async def generate(self, request_data: Dict[str, Any]):
+    async def _admit(self, request_id, input_tokens):
         async with self.status_lock:
             if self.status != BackendStatus.RUNNING:
-                return {"error": "Engine is not running"}
+                return "Engine is not running"
+            if request_id in self.active_requests:
+                return f"Duplicate request id: {request_id}"
+            self.active_requests[request_id] = {
+                "tokens": list(input_tokens or []),
+                "output": None,
+                "task": asyncio.current_task(),
+                "terminal": False,
+                "aborting": False,
+            }
+            self._drained.clear()
+        return None
 
-        assert self.engine is not None
+    async def _abort_request(self, request_id):
+        async with self.status_lock:
+            record = self.active_requests.get(request_id)
+            if record is None or record["aborting"]:
+                return
+            record["aborting"] = True
+            engine = self.engine
+        try:
+            await vllm_compat.abort(engine, request_id)
+        except Exception:
+            logger.exception("Engine abort failed for request %s", request_id)
 
+    async def _finish(self, request_id):
+        async with self.status_lock:
+            record = self.active_requests.pop(request_id)
+            record["terminal"] = True
+            if self.trace_debug:
+                self.request_history[request_id] = record["output"]
+            if not self.active_requests:
+                self._drained.set()
+
+    async def generate(self, request_data):
         if request_data is None:
             return {"error": "Request data is missing"}
-
-        model_name: str = request_data.pop("model", "vllm-model")
-        messages: Dict[Dict[str, str], str] = request_data.pop("messages", [])
-        construct_prompt: str = "\n".join(
-            [
-                f"{message['role']}: {message['content']}"
-                for message in messages
-                if "content" in message
-            ]
+        data = dict(request_data)
+        model_name = data.pop("model", "vllm-model")
+        messages = data.pop("messages", [])
+        prompt = "\n".join(
+            f"{message['role']}: {message['content']}"
+            for message in messages
+            if "content" in message
         )
-
-        # If prompt is not provided, construct it from messages
-        inputs: Union[str, TokensPrompt] = request_data.pop(
-            "prompt", construct_prompt
-        )
-        if request_data.get("input_tokens") is not None:
-            inputs = TokensPrompt(
-                prompt_token_ids=request_data.pop("input_tokens"),
-            )
-
-        request_id: str = request_data.pop(
-            "request_id", f"chatcmpl-{uuid.uuid4()}"
-        )
-
+        inputs = data.pop("prompt", prompt)
+        input_tokens = data.pop("input_tokens", None)
+        if input_tokens is not None:
+            inputs = TokensPrompt(prompt_token_ids=list(input_tokens))
+        request_id = data.pop("request_id", f"chatcmpl-{uuid.uuid4()}")
         try:
-            sampling_params = SamplingParams(**request_data)
-        except Exception as e:
-            return {"error": f"Invalid sampling parameters: {e}"}
-
-        results_generator = self.engine.generate(
-            inputs, sampling_params, request_id
-        )
-
-        # TODO stream results
-
-        # Non-stream case
+            sampling_params = SamplingParams(**data)
+        except Exception as error:
+            return {"error": f"Invalid sampling parameters: {error}"}
+        error = await self._admit(request_id, input_tokens)
+        if error:
+            return {"error": error}
         final_output = None
-        async for response_output in results_generator:
-            final_output = response_output
-            await self.request_trace.update_status(request_id, response_output)
+        try:
+            async for output in self.engine.generate(
+                inputs, sampling_params, request_id
+            ):
+                final_output = output
+                async with self.status_lock:
+                    self.active_requests[request_id]["output"] = output
+            if final_output is None:
+                return {"error": "Engine returned no output"}
+            return process_output(final_output, model_name)
+        except asyncio.CancelledError:
+            await self._abort_request(request_id)
+            raise
+        except Exception as error:
+            await self._abort_request(request_id)
+            return {"error": str(error)}
+        finally:
+            await self._finish(request_id)
 
-        assert final_output is not None
+    async def _close(self):
+        await self._drained.wait()
+        try:
+            await vllm_compat.close(self.engine)
+        finally:
+            self.engine = None
+            async with self.status_lock:
+                self.status = BackendStatus.DELETING
 
-        if not self.trace_debug:
-            await self.request_trace.delete_request(request_id)
+    async def _abort_active(self, requests):
+        try:
+            await asyncio.gather(
+                *(self._abort_request(request_id) for request_id in requests)
+            )
+        finally:
+            # Abort should terminate the engine iterator; cancellation also makes
+            # bounded progress when a failed engine no longer yields a terminal.
+            for task in requests.values():
+                if task is not None and not task.done():
+                    task.cancel()
 
-        return process_output(final_output, model_name)
+    async def _begin_close(self, force):
+        async with self.status_lock:
+            if self._close_task is None:
+                self.status = (
+                    BackendStatus.DELETING if force else BackendStatus.STOPPING
+                )
+                self._close_task = asyncio.create_task(self._close())
+            if force and self._abort_task is None:
+                self.status = BackendStatus.DELETING
+                requests = {
+                    key: value["task"]
+                    for key, value in self.active_requests.items()
+                }
+                self._abort_task = asyncio.create_task(
+                    self._abort_active(requests)
+                )
+            close_task, abort_task = self._close_task, self._abort_task
+        try:
+            if abort_task is not None:
+                await asyncio.shield(abort_task)
+        finally:
+            await asyncio.shield(close_task)
+
+    async def stop(self):
+        """Close admission, drain admitted work, and join one engine close."""
+        await self._begin_close(False)
 
     async def shutdown(self):
-        """Abort all requests and shutdown the backend."""
+        """Escalate graceful draining to abort and join the same close task."""
+        await self._begin_close(True)
+
+    async def get_current_tokens(self):
         async with self.status_lock:
-            if self.status == BackendStatus.DELETING:
-                return
-            self.status = BackendStatus.DELETING
+            snapshots = []
+            for record in self.active_requests.values():
+                output = record["output"]
+                tokens = list(record["tokens"])
+                if output is not None:
+                    tokens = list(output.prompt_token_ids or [])
+                    if isinstance(output.outputs, list) and output.outputs:
+                        tokens += list(output.outputs[0].token_ids)
+                snapshots.append(tokens)
+            return snapshots
 
-        # Abort all requests
-        requests = await self.request_trace.return_all_request_ids()
-        tasks = [self.engine.abort(request_id) for request_id in requests]
-        await asyncio.gather(*tasks)
-        if hasattr(self, "engine"):
-            del self.engine
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
-
-    async def stop(self) -> None:
-        """Wait for all requests to finish and shutdown the backend."""
-        async with self.status_lock:
-            if self.status.value >= BackendStatus.STOPPING.value:
-                return
-            self.status = BackendStatus.STOPPING
-        while await self.request_trace.request_count() > 0:
-            logger.info("Waiting for all requests to finish")
-            await asyncio.sleep(1)
-        logger.info("All requests finished. Shutting down the backend.")
-        await self.shutdown()
-
-    async def get_current_tokens(self) -> List[List[int]]:
-        """Return a list of all ongoing request tokens."""
-        async with self.status_lock:
-            if self.status != BackendStatus.RUNNING:
-                return []
-        results = await self.request_trace.return_all_results()
-        ongoing_results: List[RequestOutput] = [
-            result for result in results if isinstance(result, RequestOutput)
-        ]
-        tokens: List[List[int]] = [
-            result.prompt_token_ids + result.outputs[0].token_ids
-            for result in ongoing_results
-        ]
-        return tokens
-
-    async def resume_kv_cache(self, request_datas: List[List[int]]) -> None:
-        async with self.status_lock:
-            if self.status != BackendStatus.RUNNING:
-                return
-        constructed_inputs = [
-            {
-                "input_tokens": request_data,
-                "max_tokens": 1,
-            }
-            for request_data in request_datas
-        ]
-        tasks = [self.generate(inputs) for inputs in constructed_inputs]
-        await asyncio.gather(*tasks)
-
-    async def encode(self, request_data: Dict[str, Any]):
-        async with self.status_lock:
-            if self.status != BackendStatus.RUNNING:
-                return {"error": "Engine is not running"}
-
-        assert self.engine is not None
-
-        if not request_data:
-            return {"error": "Request data is missing"}
-
-        request_counter: Counter = Counter()
-        pooling_params: PoolingParams = PoolingParams()
-        model_name = request_data.get("model", "vllm-model")
-        query = request_data.get("input", [])
-
-        if not query:
-            return {"error": "No inputs provided"}
-
-        inputs = cast(Union[PromptType, Sequence[PromptType]], query)
-
-        async def process_input(input_data) -> List[EmbeddingRequestOutput]:
-            request_id = str(next(request_counter))
-            res = self.engine.encode(input_data, pooling_params, request_id)
-            return [result async for result in res]
-
-        raw_outputs = await asyncio.gather(
-            *[process_input(input_data) for input_data in inputs],
-            return_exceptions=True,
+    async def resume_kv_cache(self, request_datas):
+        await asyncio.gather(
+            *(
+                self.generate({"input_tokens": tokens, "max_tokens": 1})
+                for tokens in request_datas
+            )
         )
 
-        valid_outputs = []
-        for output in raw_outputs:
-            if isinstance(output, Exception):
-                logger.error(f"Error encountered: {output}")
-            else:
-                valid_outputs.extend(output)
+    async def encode(self, request_data):
+        if not request_data:
+            return {"error": "Request data is missing"}
+        if (
+            self.backend_config.get("task", "auto") == "generate"
+            or getattr(self.engine_args, "runner", "auto") == "generate"
+            or not hasattr(self.engine, "encode")
+        ):
+            return {"error": "Model is not configured for pooling/embedding"}
+        data = dict(request_data)
+        query = data.get("input", [])
+        if not query:
+            return {"error": "No inputs provided"}
+        if isinstance(query, str) or (
+            isinstance(query, list) and isinstance(query[0], int)
+        ):
+            query = [query]
 
-        if not valid_outputs:
-            return {"error": "All inputs failed"}
+        async def process_input(inputs):
+            request_id = f"embed-{uuid.uuid4()}-{next(self._request_counter)}"
+            tokens = inputs if isinstance(inputs, list) else []
+            error = await self._admit(request_id, tokens)
+            if error:
+                return {"error": error}
+            try:
+                output = None
+                if isinstance(inputs, list) and all(
+                    isinstance(token, int) for token in inputs
+                ):
+                    inputs = TokensPrompt(prompt_token_ids=list(inputs))
+                async for output in self.engine.encode(
+                    inputs, PoolingParams(), request_id
+                ):
+                    async with self.status_lock:
+                        self.active_requests[request_id]["output"] = output
+                if output is not None and not hasattr(
+                    output.outputs, "embedding"
+                ):
+                    output = EmbeddingRequestOutput.from_base(output)
+                return output
+            except asyncio.CancelledError:
+                await self._abort_request(request_id)
+                raise
+            except Exception as error:
+                await self._abort_request(request_id)
+                return {"error": f"Pooling/embedding request failed: {error}"}
+            finally:
+                await self._finish(request_id)
 
-        return process_embedding_output(valid_outputs, model_name)
+        outputs = await asyncio.gather(*(process_input(item) for item in query))
+        valid = [
+            item
+            for item in outputs
+            if item is not None and not isinstance(item, dict)
+        ]
+        if not valid:
+            return next(
+                (item for item in outputs if isinstance(item, dict)),
+                {"error": "All inputs failed"},
+            )
+        if any(not hasattr(item.outputs, "embedding") for item in valid):
+            return {"error": "Pooling model does not provide embedding outputs"}
+        return process_embedding_output(valid, data.get("model", "vllm-model"))

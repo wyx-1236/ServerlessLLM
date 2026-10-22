@@ -1,7 +1,7 @@
-"""Characterize the unchanged upstream backend with CPU-only engine doubles.
+"""Preserved upstream response contracts with CPU-only engine doubles.
 
-These tests record inherited defects, rather than treating those defects as
-desired behavior. They do not establish compatibility with real vLLM.
+Lifecycle defects captured during Stage A are now regression expectations.
+These doubles do not establish compatibility with real vLLM.
 """
 
 import asyncio
@@ -24,7 +24,9 @@ def legacy(monkeypatch):
         load_format: str = ""
         enforce_eager: bool = False
         enable_prefix_caching: bool = True
-        task: str = "auto"
+        runner: str = "auto"
+        convert: str = "auto"
+        distributed_executor_backend: str = "mp"
 
     @dataclass
     class Output:
@@ -80,6 +82,7 @@ def legacy(monkeypatch):
     torch = types.ModuleType("torch")
     torch.cuda = types.SimpleNamespace(is_available=lambda: False)
     vllm = types.ModuleType("vllm")
+    vllm.__version__ = "0.31.0"
     for name, value in {
         "AsyncEngineArgs": Args,
         "AsyncLLMEngine": object,
@@ -107,7 +110,14 @@ def legacy(monkeypatch):
     spec.loader.exec_module(module)
 
     def create(config=None):
-        backend = module.VllmBackend("example", config or {})
+        backend = module.VllmBackend(
+            "example",
+            {
+                "load_format": "safetensors",
+                "pretrained_model_name_or_path": "example",
+                **(config or {}),
+            },
+        )
         backend.status = module.BackendStatus.RUNNING
         backend.engine = Engine()
         return backend
@@ -164,35 +174,35 @@ async def test_sampling_error_keeps_original_error_protocol(legacy):
 
 
 @pytest.mark.asyncio
-async def test_original_first_output_registration_gap(legacy):
+async def test_admission_precedes_first_output(legacy):
     backend = legacy()
     request = asyncio.create_task(backend.generate({"prompt": "hello"}))
     await backend.engine.started.wait()
     try:
-        # Known defect: accepted work is invisible to stop/shutdown until output.
-        assert await backend.request_trace.request_count() == 0
+        # Admission must be visible even when the engine has not yielded.
+        assert await backend.request_trace.request_count() == 1
     finally:
         backend.engine.release.set()
         await request
 
 
 @pytest.mark.asyncio
-async def test_original_engine_exception_leaks_trace(legacy):
+async def test_engine_exception_unregisters_trace(legacy):
     backend = legacy()
     backend.engine.release.set()
     backend.engine.fail_after_output = True
-    with pytest.raises(RuntimeError, match="engine failure"):
-        await backend.generate({"request_id": "failed", "prompt": "hello"})
-    # Known defect, to replace with zero after lifecycle integration.
-    assert await backend.request_trace.request_count() == 1
+    result = await backend.generate({"request_id": "failed", "prompt": "hello"})
+    assert "engine failure" in result["error"]
+    assert await backend.request_trace.request_count() == 0
 
 
 @pytest.mark.asyncio
-async def test_original_debug_history_counts_as_active(legacy):
+async def test_debug_history_is_separate_from_active(legacy):
     backend = legacy({"trace_debug": True})
     backend.engine.release.set()
     await backend.generate({"prompt": "hello"})
-    assert await backend.request_trace.request_count() == 1
+    assert await backend.request_trace.request_count() == 0
+    assert backend.request_history
 
 
 @pytest.mark.asyncio
@@ -231,8 +241,8 @@ async def test_stop_rejects_new_work_and_drains_observed_work(legacy):
         engine.finish.set()
         await request
         await asyncio.wait_for(stop, timeout=3)
-    # Original shutdown deletes the reference but never closes EngineCore.
-    assert engine.close_calls == 0
+    # Closing the frontend must explicitly close its engine tree.
+    assert engine.close_calls == 1
 
 
 @pytest.mark.asyncio

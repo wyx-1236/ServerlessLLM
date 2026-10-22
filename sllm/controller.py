@@ -63,7 +63,7 @@ class SllmController:
             self.running = True
 
         # Start the fine-tuning job processor
-        asyncio.create_task(self._process_ft_jobs())
+        self.ft_processor = asyncio.create_task(self._process_ft_jobs())
 
         logger.info("Starting store manager")
         enable_storage_aware = self.config.get("enable_storage_aware", False)
@@ -93,7 +93,7 @@ class SllmController:
                 "enable_migration": enable_migration,
             }
         )
-        self.scheduler.start.remote()
+        await self.scheduler.start.remote()
 
     async def register(self, model_config):
         if not self.running:
@@ -167,7 +167,7 @@ class SllmController:
                 logger.error(f"Model {model_name} already registered")
                 return
 
-        request_router.start.remote(auto_scaling_config)
+        await request_router.start.remote(auto_scaling_config)
 
         logger.info(f"Model {model_name} registered")
 
@@ -270,9 +270,11 @@ class SllmController:
             router = self.request_routers.pop(model_name)
             self.registered_models.pop(model_name)
 
-        # if router is not None:
-        #     deleted_instance_id = await router.shutdown.remote()
-        del router
+        if router is not None:
+            try:
+                await router.shutdown.remote()
+            finally:
+                ray.kill(router, no_restart=True)
 
     async def get_models(self):
         async with self.metadata_lock:
@@ -378,12 +380,31 @@ class SllmController:
             self.running = False
 
         # delete all models
+        if hasattr(self, "ft_processor"):
+            self.ft_processor.cancel()
+            await asyncio.gather(self.ft_processor, return_exceptions=True)
         async with self.metadata_lock:
-            delete_tasks = [
-                self._delete(model_name)
-                for model_name in self.request_routers.keys()
-            ]
-            await asyncio.gather(*delete_tasks)
+            models = list(self.request_routers)
+        outcomes = await asyncio.gather(
+            *(self.delete(name) for name in models), return_exceptions=True
+        )
+        try:
+            await self.scheduler.shutdown.remote()
+        finally:
+            for actor in (
+                self.scheduler,
+                self.store_manager,
+                self.ft_job_store,
+            ):
+                try:
+                    ray.kill(actor, no_restart=True)
+                except Exception:
+                    logger.exception("Owned control actor cleanup failed")
+        failures = [
+            item for item in outcomes if isinstance(item, BaseException)
+        ]
+        if failures:
+            raise RuntimeError("Model cleanup failed") from failures[0]
 
     async def _start_ft_job(self, job_id, job_info):
         await self.ft_job_store.update_status.remote(job_id, "running")

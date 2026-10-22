@@ -38,6 +38,7 @@ class ServerlessLLMModelLoader(BaseModelLoader):
             "artifact_path",
             "identity",
             "store_address",
+            "store_root",
             "candidate_manifest",
         }
         if not isinstance(extra, dict) or set(extra) - allowed:
@@ -45,7 +46,13 @@ class ServerlessLLMModelLoader(BaseModelLoader):
         path = extra.get("artifact_path")
         if not isinstance(path, str) or not Path(path).is_absolute():
             raise ValueError("artifact_path must be an absolute directory")
-        self.path = Path(path)
+        self.path = Path(path).resolve()
+        root = extra.get("store_root", str(self.path.parent))
+        if not isinstance(root, str) or not Path(root).is_absolute():
+            raise ValueError("store_root must be an absolute directory")
+        self.store_root = Path(root).resolve()
+        if not self.path.is_relative_to(self.store_root):
+            raise ValueError("Artifact must be contained in store_root")
         self.identity = extra.get("identity")
         required = dict(
             engine="vllm",
@@ -129,9 +136,9 @@ class ServerlessLLMModelLoader(BaseModelLoader):
         if index is None:
             index = torch.cuda.current_device()
         return load_dict(
-            directory.relative_to(self.path.parent).as_posix(),
+            directory.resolve().relative_to(self.store_root).as_posix(),
             {"": index},
-            storage_path=str(self.path.parent),
+            storage_path=str(self.store_root),
             server_address=self.store_address,
         )
 

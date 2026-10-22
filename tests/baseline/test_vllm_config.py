@@ -45,6 +45,10 @@ def test_aliases_do_not_mutate_input_or_leak_host_fields(resolve):
         "device_map": "auto",
         "hf_model_class": "AutoModelForCausalLM",
         "trace_debug": True,
+        "source_snapshot": {
+            "source": "frozen/repository",
+            "revision": "immutable",
+        },
         "tensor_parallel_size": 2,
     }
     before = config.copy()

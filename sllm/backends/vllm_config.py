@@ -27,6 +27,7 @@ def resolve_vllm_config(
         "trace_debug",
         "device_map",
         "hf_model_class",
+        "source_snapshot",
     }
     unknown = set(config) - set(engine_fields) - host_fields
     if unknown:
