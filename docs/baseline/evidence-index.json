@@ -42,6 +42,61 @@
       "release": "soft unlock GPU 1; inactive unit, no compute apps and 0 MiB",
       "archive": "gpu-evidence-20261022-080645.tgz",
       "archive_sha256": "5f879edfb4d57b1e5e91513588718654e524030449f1cacd9d64a17c771a525c"
+    },
+    {
+      "executable_commit": "fef30ee9bab49fa7bf8b8b9ff53e60b9157ef4b3",
+      "status": "Stage B bounded checks passed; user stage review pending",
+      "server": "inspur-gpu-12",
+      "physical_gpu_indices": [
+        1
+      ],
+      "lock_mode": "soft",
+      "batch": "20261022-082738",
+      "model": "Qwen/Qwen3-0.6B",
+      "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+      "dtype": "bfloat16",
+      "tensor_parallel_size": 1,
+      "enforce_eager": true,
+      "max_model_len": 512,
+      "raw_prompt_count": 2,
+      "generated_tokens_per_prompt": 8,
+      "logprob_atol": 0,
+      "wheel_sha256": "e73d1d16dc12698584a6a57bcf1800feaddc136bf72d12cdadd1d67cc78991e5",
+      "artifact_manifest_sha256": "c6219429ad0a3912a178708a55ed1ea5789eba5b246d2f1db0f5e1a8a259dee1",
+      "logical_tensor_count": 339,
+      "parameters": 227,
+      "persistent_buffers": 112,
+      "unique_storages": 338,
+      "shared_storage_groups": [
+        [
+          "lm_head.weight",
+          "model.embed_tokens.weight"
+        ]
+      ],
+      "verification": {
+        "isolation": {
+          "interfaces": [
+            "lo"
+          ],
+          "network_namespace": 4026534180,
+          "parent_network_namespace": 4026531840
+        },
+        "logprobs_verified": true,
+        "method": "independent-offline-native-store-token-logprob-v1",
+        "passed": true,
+        "reference_sha256": "a1bff226210741f1883cabf058975ca8a885c23195785cc6c0f9bff95b3c8ad2",
+        "request_count": 2,
+        "schema_version": 1,
+        "tokens_verified": true
+      },
+      "sampled_gpu_peak_mib": 2367,
+      "sampled_cgroup_memory_peak_bytes": 6430957568,
+      "release": "soft unlock GPU 1; inactive unit, no compute applications, 0 MiB",
+      "evidence_archive": "gpu-evidence-20261022-082738.tgz",
+      "evidence_archive_sha256": "47c7217f4786d1ede2d8fe0c16b7b1e78e39b159d749874ce6bc6cc36a45dce7",
+      "evidence_location": "External engine-upgrade-20261022/stageB collection; local and server copies verified",
+      "payload_evidence": "All 11 payload hashes rechecked remotely; large tensor payload retained on server; small archive includes metadata, references, logs and receipts",
+      "acceptance_boundary": "Native Qwen3-0.6B preparation and independent offline Store restore only; not Controller/Ray/HTTP, lifecycle, migration, TP2, graph mode, model matrix or performance acceptance"
     }
   ],
   "stage_a_sources": [
@@ -94,7 +149,8 @@
       "Exact tokens/top-5 logprobs, CPU/GPU memory peaks and physical CUDA/Ray cleanup"
     ],
     "gpu_usage": "None; no lock, allocation or engine startup",
-    "acceptance_boundary": "CPU implementation candidate only. No Stage B completion, model or GPU qualification."
+    "acceptance_boundary": "CPU implementation candidate only. No Stage B completion, model or GPU qualification.",
+    "record_scope": "Historical initial CPU-only snapshot before the later native builds and approved GPU batches; see stage_b_runtime_qualification for the tested executable identity."
   },
   "stage_b_reader_followup": {
     "status": "CPU-verified fix; model restore qualification pending",
@@ -113,5 +169,60 @@
     "evidence_archive_sha256": "b3fb8973c9e8ecfda9b5cbe85ad3a7754f1d06f00313a9545ce58bc8b9f30daf",
     "gpu_used_for_followup": false,
     "scope": "No new GPU batch or Stage C work; source changes require a new qualified artifact"
+  },
+  "stage_b_runtime_qualification": {
+    "executable_commit": "fef30ee9bab49fa7bf8b8b9ff53e60b9157ef4b3",
+    "status": "Stage B bounded checks passed; user stage review pending",
+    "server": "inspur-gpu-12",
+    "physical_gpu_indices": [
+      1
+    ],
+    "lock_mode": "soft",
+    "batch": "20261022-082738",
+    "model": "Qwen/Qwen3-0.6B",
+    "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "dtype": "bfloat16",
+    "tensor_parallel_size": 1,
+    "enforce_eager": true,
+    "max_model_len": 512,
+    "raw_prompt_count": 2,
+    "generated_tokens_per_prompt": 8,
+    "logprob_atol": 0,
+    "wheel_sha256": "e73d1d16dc12698584a6a57bcf1800feaddc136bf72d12cdadd1d67cc78991e5",
+    "artifact_manifest_sha256": "c6219429ad0a3912a178708a55ed1ea5789eba5b246d2f1db0f5e1a8a259dee1",
+    "logical_tensor_count": 339,
+    "parameters": 227,
+    "persistent_buffers": 112,
+    "unique_storages": 338,
+    "shared_storage_groups": [
+      [
+        "lm_head.weight",
+        "model.embed_tokens.weight"
+      ]
+    ],
+    "verification": {
+      "isolation": {
+        "interfaces": [
+          "lo"
+        ],
+        "network_namespace": 4026534180,
+        "parent_network_namespace": 4026531840
+      },
+      "logprobs_verified": true,
+      "method": "independent-offline-native-store-token-logprob-v1",
+      "passed": true,
+      "reference_sha256": "a1bff226210741f1883cabf058975ca8a885c23195785cc6c0f9bff95b3c8ad2",
+      "request_count": 2,
+      "schema_version": 1,
+      "tokens_verified": true
+    },
+    "sampled_gpu_peak_mib": 2367,
+    "sampled_cgroup_memory_peak_bytes": 6430957568,
+    "release": "soft unlock GPU 1; inactive unit, no compute applications, 0 MiB",
+    "evidence_archive": "gpu-evidence-20261022-082738.tgz",
+    "evidence_archive_sha256": "47c7217f4786d1ede2d8fe0c16b7b1e78e39b159d749874ce6bc6cc36a45dce7",
+    "evidence_location": "External engine-upgrade-20261022/stageB collection; local and server copies verified",
+    "payload_evidence": "All 11 payload hashes rechecked remotely; large tensor payload retained on server; small archive includes metadata, references, logs and receipts",
+    "acceptance_boundary": "Native Qwen3-0.6B preparation and independent offline Store restore only; not Controller/Ray/HTTP, lifecycle, migration, TP2, graph mode, model matrix or performance acceptance"
   }
 }

@@ -46,7 +46,7 @@
     "adopted_source_changes": []
   },
   "stage_b_candidate": {
-    "status": "CPU implementation candidate, not Stage B acceptance",
+    "status": "Stage B bounded native Store verification passed on fef30ee; awaiting user stage review",
     "components": [
       "Checked native O_DIRECT writer finalization and failure propagation",
       "Versioned raw-storage and logical tensor/buffer/alias layout",
@@ -57,8 +57,10 @@
     ],
     "historical_adaptation": "Research provided the Worker-extension and persistent-buffer restore approach; production contracts were reimplemented with explicit identity, bounds, cleanup and failure tests, without applying the historical engine patch",
     "tensor_test_profile": "tests/baseline/requirements-tensor-cpu.txt",
-    "qualification_remaining": "Patched native reader GPU IPC, complete independent Store restore and exact tensor/token/logprob comparison remain unqualified; no Stage B acceptance"
+    "qualification_remaining": "Controller/Scheduler/Router/Ray backend/HTTP and lifecycle in C; original migration and TP2 in D; broader models and metrics in E; final serving image remains unbuilt",
+    "runtime_evidence": "evidence-index.json#stage_b_runtime_qualification",
+    "tested_executable_commit": "fef30ee9bab49fa7bf8b8b9ff53e60b9157ef4b3"
   },
   "code_scope": "Stage A CPU configuration and lock; Stage B writer/plugin/artifact/preparation/registration candidate. Serving backend and migration remain pending stages C/D.",
-  "gpu_usage": "Three explicitly approved GPU 1 batches on inspur-gpu-12 ended without Stage B acceptance; all released and reported. See evidence-index.json for the model-run failure. The reader diagnosis/fix/build/tests used no GPU."
+  "gpu_usage": "Four explicitly approved soft-lock GPU 1 batches on inspur-gpu-12: three failures preserved, then Stage B bounded checks passed in 20261022-082738. Every batch stopped and released; the successful batch returned to 0 MiB with no compute processes."
 }
