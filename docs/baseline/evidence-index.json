@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "collection": "engine-route-evaluation-20261016",
+  "storage": "External historical archives, not committed to this fork",
+  "acceptance_boundary": "These are historical prototype observations, not acceptance of any current fork commit",
+  "archives": [
+    {
+      "name": "first-gpu-evidence.zip",
+      "sha256": "70067c023a09e4fdadcf24d6976bfe8b7274c0432505201514f89a3cf998e3e2",
+      "record": "VERIFIED-GPU-SUMMARY.json",
+      "scope": "Qwen3-0.6B BF16 TP1 eager short-prompt native/Store comparison"
+    },
+    {
+      "name": "qwen35-evidence.zip",
+      "sha256": "7239109b6d36e5b6a7b5a272b19dd39684b1fcf0547c97f9172e7709d6936126",
+      "record": "QWEN35-GPU-STAGES.json",
+      "scope": "Qwen3.5-9B bounded native/Store text comparisons, not multimodal qualification"
+    },
+    {
+      "name": "backend-contract-gpu-evidence.zip",
+      "sha256": "e6689f1e80bc364860b1461d3e606f8ee43c7945babd2131c61197692b4f14bb",
+      "record": "BACKEND-CONTRACT-VERIFIED.json",
+      "scope": "Real backend objects; no Controller/Ray/HTTP or full migration acceptance"
+    }
+  ],
+  "current_integration_gpu_results": []
+}

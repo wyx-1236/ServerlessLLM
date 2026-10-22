@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "upstream": {
+    "url": "https://github.com/ServerlessLLM/ServerlessLLM",
+    "reference_commit": "9f50241baa5386e06a9321c51f19a9ef5f964c2b",
+    "reference_tag": "sllm-baseline-upstream-9f50241"
+  },
+  "fork": {
+    "url": "https://github.com/wyx-1236/ServerlessLLM",
+    "integration_branch": "codex/baseline-vllm",
+    "upgrade_branch": "codex/vllm-upgrade"
+  },
+  "target_runtime": {
+    "engine": "vllm",
+    "engine_version": "0.31.0",
+    "basis": "Bounded historical engine-route research, not current integration acceptance",
+    "dependency_lock": null,
+    "dependency_lock_reason": "Full runtime resolution belongs to stage A"
+  },
+  "design_source": {
+    "repository_document": "docs/plans/serverlessllm-vllm-upgrade/README.md",
+    "source_sha256": "cb6eb9b910ad88cf637100d57ad974cbb41ad46645d7092bfa3a5ea70f819ca5",
+    "fork_document": "engine-upgrade.md",
+    "adaptations": [
+      "Replaced sibling-repository links with a self-contained evaluation contract",
+      "Made the fork document authoritative for SLLM-only implementation",
+      "Omitted machine-specific workspace paths"
+    ]
+  },
+  "historical_candidate02": {
+    "patch_sha256": "0c8302d23a523ee8406f0d624cd0a08b1e8b1079d8481dd232f80e11b212e0e7",
+    "declared_source_manifest_sha256": "e195ab47c96099202a49a232cdb81460d9ece8b5f278b15a59c4e148b702cdef",
+    "identity_basis": "Previously frozen evaluation plan; not revalidated as executable vLLM baseline in stage 0",
+    "adopted_changes": [],
+    "review_required": "Stage A must audit applicable fixes before any migration"
+  },
+  "historical_research": {
+    "collection": "engine-route-evaluation-20261016",
+    "evidence_index": "evidence-index.json",
+    "adopted_source_changes": []
+  },
+  "code_scope": "Stage 0 documents and provenance only; no engine or Store modifications",
+  "gpu_usage": "None"
+}
