@@ -35,7 +35,12 @@ an isolated network namespace's Store and a private two-node Ray cluster on one
 host. The Store listens on the namespace's interfaces only after independent
 namespace and loopback-only checks pass. Readiness probes cover both backend
 loopback and Ray-discovered worker addresses before Controller startup. It then exercises actual HTTP registration, generation, concurrency, errors,
-deletion, restart, graceful drain and forced shutdown. It never reserves GPUs
+deletion, restart, graceful drain and forced shutdown. Additional probes require
+four simultaneously active backend requests, real Ray task cancellation, an
+exactly identified owned Worker fault, and failed KV-cache initialization followed
+by fresh registration. Worker signaling uses a pidfd after UUID, service cgroup
+and process identity checks. Wrapped initialization errors require the pinned
+KV-memory error in the failed actor's newly written logs. It never reserves GPUs
 or authorizes another batch. CPU tests and source review do not qualify GPU
 serving, Worker failure recovery, migration, TP2 or a general model matrix;
 acceptance remains tied to separately archived execution and cleanup evidence.

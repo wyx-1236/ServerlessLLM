@@ -260,6 +260,81 @@ async def qualify(config, output):
             backend = ray.get_actor(
                 actors[0]["name"], namespace=actors[0]["namespace"]
             )
+            # The inherited Router polls at one-second intervals, so HTTP
+            # submission concurrency alone does not prove engine overlap.
+            parallel_requests = [
+                {
+                    **request,
+                    "request_id": f"stage-c-active-{index}",
+                    "max_tokens": 64,
+                    "ignore_eos": True,
+                }
+                for index in range(4)
+            ]
+            parallel_refs = [
+                backend.generate.remote(body) for body in parallel_requests
+            ]
+            observed = []
+            for _ in range(300):
+                observed = await backend.get_current_tokens.remote()
+                if len(observed) == 4:
+                    break
+                await asyncio.sleep(0.01)
+            assert (
+                len(observed) == 4
+            ), "Four backend requests never simultaneously active"
+            parallel = await asyncio.wait_for(
+                asyncio.gather(*parallel_refs), 45
+            )
+            assert {item["id"] for item in parallel} == {
+                body["request_id"] for body in parallel_requests
+            }
+            assert all(
+                item["usage"]["completion_tokens"] == 64
+                and item["usage"] == parallel[0]["usage"]
+                and item["choices"] == parallel[0]["choices"]
+                for item in parallel
+            ), parallel
+            assert await backend.get_current_tokens.remote() == []
+            result["backend_concurrent"] = parallel
+            result["backend_concurrent_active_snapshot"] = observed
+            result["checks"]["four_simultaneous_backend_requests"] = True
+            cancelled_ref = backend.generate.remote(
+                {
+                    **request,
+                    "request_id": "stage-c-cancel",
+                    "max_tokens": 384,
+                    "ignore_eos": True,
+                }
+            )
+            for _ in range(200):
+                if await backend.get_current_tokens.remote():
+                    break
+                await asyncio.sleep(0.01)
+            else:
+                raise AssertionError(
+                    "No running request observed before Ray cancellation"
+                )
+            # Cancel the actual async actor task, not only a local await wrapper.
+            ray.cancel(cancelled_ref, force=False, recursive=True)
+            try:
+                await asyncio.wait_for(cancelled_ref, 20)
+            except ray.exceptions.TaskCancelledError as error:
+                result["cancellation"] = str(error)
+            else:
+                raise AssertionError(
+                    "Cancelled actor generate unexpectedly completed"
+                )
+            for _ in range(200):
+                if await backend.get_current_tokens.remote() == []:
+                    break
+                await asyncio.sleep(0.01)
+            assert await backend.get_current_tokens.remote() == []
+            after_cancel = await backend.generate.remote(
+                {**request, "request_id": "stage-c-after-cancel"}
+            )
+            assert after_cancel["choices"] == first["choices"], after_cancel
+            result["checks"]["ray_running_request_cancellation_recovery"] = True
             long_request = {
                 **request,
                 "request_id": "stage-c-drain",
@@ -304,6 +379,122 @@ async def qualify(config, output):
             ), restarted.text
             result["restarted"] = restarted.json()
             result["checks"]["fresh_actor_restart"] = True
+            from qualification_process import (
+                cache_failure_evidence,
+                kill_worker,
+                log_offsets,
+                select_worker,
+            )
+
+            inventory = subprocess.run(
+                [
+                    "nvidia-smi",
+                    "--query-compute-apps=gpu_uuid,pid,process_name",
+                    "--format=csv,noheader,nounits",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            ).stdout
+            identity = select_worker(
+                inventory,
+                config["gpu_uuid"],
+                config["unit"],
+                Path("/proc/self/cgroup").read_text(),
+            )
+            result["worker_fault"] = {**identity, "fault_epoch": time.time()}
+            write(output / "service-result.json", result)
+            kill_worker(identity)
+            fault_started = time.monotonic()
+            failed = await asyncio.wait_for(
+                client.post(
+                    "/v1/chat/completions",
+                    json={
+                        **request,
+                        "request_id": "stage-c-after-worker-death",
+                    },
+                ),
+                30,
+            )
+            assert (
+                failed.status_code >= 400 or "error" in failed.json()
+            ), failed.text
+            result["worker_fault"].update(
+                response_seconds=time.monotonic() - fault_started,
+                status=failed.status_code,
+                body=failed.text,
+            )
+            removed = await asyncio.wait_for(
+                client.post("/delete", json={"model": model}), 45
+            )
+            assert removed.status_code == 200, removed.text
+            # An init failure needs the sole Ray GPU slot released first.
+            from sllm.backends.vllm_backend import VllmBackend
+
+            class QualificationBackend(VllmBackend):
+                def qualification_identity(self):
+                    return {
+                        "pid": os.getpid(),
+                        "cgroup": Path("/proc/self/cgroup").read_text(),
+                    }
+
+            ray_logs = ray_root / "ray/session_latest/logs"
+            bad_backend = (
+                ray.remote(QualificationBackend)
+                .options(
+                    num_cpus=1,
+                    num_gpus=1,
+                    max_concurrency=10,
+                    max_task_retries=0,
+                    resources={"worker_node": 0.1, "worker_id_0": 0.1},
+                )
+                .remote(
+                    model,
+                    {
+                        **model_config["backend_config"],
+                        "kv_cache_memory_bytes": 1,
+                    },
+                )
+            )
+            try:
+                bad_identity = await asyncio.wait_for(
+                    bad_backend.qualification_identity.remote(), 30
+                )
+                assert (
+                    bad_identity["cgroup"] == identity["cgroup"]
+                ), bad_identity
+                result["init_failure_actor"] = bad_identity
+                offsets = log_offsets(ray_logs, bad_identity["pid"])
+                try:
+                    await asyncio.wait_for(
+                        bad_backend.init_backend.remote(), 90
+                    )
+                except ray.exceptions.RayTaskError as error:
+                    result["init_failure"] = str(error)
+                    result["init_failure_evidence"] = cache_failure_evidence(
+                        str(error), ray_logs, offsets, bad_identity["pid"]
+                    )
+                else:
+                    raise AssertionError(
+                        "One-byte KV cache unexpectedly initialized"
+                    )
+                await asyncio.wait_for(bad_backend.shutdown.remote(), 30)
+            finally:
+                ray.kill(bad_backend, no_restart=True)
+            response = await client.post("/register", json=model_config)
+            assert response.status_code == 200, response.text
+            recovered = await client.post(
+                "/v1/chat/completions",
+                json={**request, "request_id": "stage-c-after-fault-recovery"},
+            )
+            assert recovered.status_code == 200, recovered.text
+            assert (
+                recovered.json()["choices"] == first["choices"]
+            ), recovered.text
+            assert recovered.json()["usage"] == first["usage"], recovered.text
+            result["checks"]["owned_worker_fault_controlled_recovery"] = True
+            result["checks"]["real_init_failure_cleanup_recovery"] = True
             names = ray.util.list_named_actors(all_namespaces=True)
             actors = [
                 item for item in names if item["name"].startswith(model + "_")
