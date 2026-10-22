@@ -1,0 +1,18 @@
+# Candidate dependency image only. Native Store and serving qualify separately.
+FROM ghcr.io/astral-sh/uv:0.13.4@sha256:9f130421e930bfbdc563c00740466603f8723158e90297d07957c2294640262b AS uv
+FROM nvidia/cuda:13.0.2-devel-ubuntu24.04@sha256:5dc1bca23d05bd37b011be68ec470c03b403a5da07ec3a86e41af9470e9d0cc6 AS runtime-dependencies
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential ca-certificates curl git libnuma-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=uv /uv /uvx /usr/local/bin/
+WORKDIR /app
+COPY . /app
+RUN uv python install 3.12.13 \
+    && uv sync --frozen --extra worker --group build \
+       --no-install-project --no-install-package serverless-llm-store
+
+# Stage B adds native Store builds only after its own review and resource gate.
+# Never run the historical vLLM patch against 0.31.0.
+ENV PATH="/app/.venv/bin:${PATH}"
+CMD ["bash"]

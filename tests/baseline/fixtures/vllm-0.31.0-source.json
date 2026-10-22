@@ -1,0 +1,6 @@
+{
+  "source": "https://raw.githubusercontent.com/vllm-project/vllm/v0.31.0/vllm/engine/arg_utils.py",
+  "source_sha256": "95be1adb96f55933f6a52260c8cb2181d04707401ca21d97c33108c5ab58f3ac",
+  "extraction": "AST annotated class fields in EngineArgs and AsyncEngineArgs; no import or execution",
+  "scope": "Field-name projection tests only; real engine constructor validation remains pending"
+}

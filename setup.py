@@ -25,11 +25,6 @@ from setuptools import find_packages, setup
 ROOT_DIR = os.path.dirname(__file__)
 
 
-def fetch_requirements(path):
-    with open(path, "r") as fd:
-        return [r.strip() for r in fd.readlines()]
-
-
 def remove_prefix(text, prefix):
     if text.startswith(prefix):
         return text[len(prefix) :]
@@ -49,22 +44,13 @@ def read_readme() -> str:
         return ""
 
 
-install_requires = fetch_requirements("requirements.txt")
-install_requires_worker = fetch_requirements("requirements-worker.txt")
-
-extras = {}
-extras["test"] = install_requires_worker + ["pytest", "pytest-asyncio"]
-extras["worker"] = install_requires_worker
-
 sys.path.append(Path.cwd().as_posix())
 
 setup(
     name="serverless-llm",
     version="0.8.0",
-    install_requires=install_requires,
     long_description=read_readme(),
     long_description_content_type="text/markdown",
-    extras_require=extras,
     entry_points={
         "console_scripts": [
             "sllm = sllm.cli.clic:cli",

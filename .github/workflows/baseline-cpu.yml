@@ -1,0 +1,39 @@
+name: Baseline CPU contracts
+
+on:
+  push:
+    branches: [codex/vllm-upgrade, codex/baseline-vllm]
+    paths:
+      - 'sllm/**'
+      - 'tests/baseline/**'
+      - 'pyproject.toml'
+      - 'requirements*.txt'
+      - 'setup.py'
+      - 'sllm_store/pyproject.toml'
+      - 'sllm_store/requirements*.txt'
+      - 'sllm_store/setup.py'
+      - 'uv.lock'
+      - '.github/workflows/baseline-cpu.yml'
+  pull_request:
+    branches: [codex/baseline-vllm]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CUDA_VISIBLE_DEVICES: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.13.4'
+          python-version: '3.12.13'
+      - run: uv lock --check
+      - run: uv export --frozen --only-group cpu -o /tmp/sllm-cpu.lock
+      - run: uv venv /tmp/sllm-cpu && uv pip sync --python /tmp/sllm-cpu/bin/python --require-hashes /tmp/sllm-cpu.lock
+      - run: /tmp/sllm-cpu/bin/python -m pytest tests/baseline -q

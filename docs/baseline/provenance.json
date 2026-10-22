@@ -14,8 +14,9 @@
     "engine": "vllm",
     "engine_version": "0.31.0",
     "basis": "Bounded historical engine-route research, not current integration acceptance",
-    "dependency_lock": null,
-    "dependency_lock_reason": "Full runtime resolution belongs to stage A"
+    "dependency_lock": "uv.lock",
+    "dependency_lock_sha256": "b95c64f6357b653f3e1e45e7dddfe4b3efdcd8f9ae9ef926fce82dd7be025ec0",
+    "environment_scope": "Linux x86_64, CPython 3.12; resolved candidate, native/engine acceptance remains pending"
   },
   "design_source": {
     "repository_document": "docs/plans/serverlessllm-vllm-upgrade/README.md",
@@ -30,15 +31,20 @@
   "historical_candidate02": {
     "patch_sha256": "0c8302d23a523ee8406f0d624cd0a08b1e8b1079d8481dd232f80e11b212e0e7",
     "declared_source_manifest_sha256": "e195ab47c96099202a49a232cdb81460d9ece8b5f278b15a59c4e148b702cdef",
-    "identity_basis": "Previously frozen evaluation plan; not revalidated as executable vLLM baseline in stage 0",
-    "adopted_changes": [],
-    "review_required": "Stage A must audit applicable fixes before any migration"
+    "identity_basis": "Rehashed historical cumulative patch and successful git apply --check on the pristine reference; never applied wholesale",
+    "adopted_changes": [
+      {
+        "file": "sllm/backends/__init__.py",
+        "change": "Lazy backend imports; extended to all three backends for dependency-free configuration checks"
+      }
+    ],
+    "review_required": "Remaining fixes are assigned to stages B, C or D in patch-audit.md"
   },
   "historical_research": {
     "collection": "engine-route-evaluation-20261016",
     "evidence_index": "evidence-index.json",
     "adopted_source_changes": []
   },
-  "code_scope": "Stage 0 documents and provenance only; no engine or Store modifications",
+  "code_scope": "CPU configuration projection, lazy imports, dependency metadata, lock and contract tests; engine/Store execution algorithms unchanged",
   "gpu_usage": "None"
 }

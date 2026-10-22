@@ -93,11 +93,6 @@ class CustomInstall(install):
         super().run()
 
 
-def fetch_requirements(path):
-    with open(path, "r") as fd:
-        return [r.strip() for r in fd.readlines()]
-
-
 def remove_prefix(text, prefix):
     if text.startswith(prefix):
         return text[len(prefix) :]
@@ -116,22 +111,6 @@ def read_readme() -> str:
     else:
         return ""
 
-
-install_requires = fetch_requirements("requirements.txt")
-
-extras = {}
-
-extras["vllm"] = [
-    "vllm",
-    "pillow>=10.3.0",
-]
-
-extras["test"] = [
-    "pytest",
-    "accelerate>=0.27.2",
-    "transformers>=4.37.2",
-    "parameterized",
-]
 
 sys.path.append(Path.cwd().as_posix())
 
@@ -233,10 +212,8 @@ setup(
         CMakeExtension(name="sllm_store._C"),
         CMakeExtension(name="sllm_store._checkpoint_store"),
     ],
-    install_requires=install_requires,
     long_description=read_readme(),
     long_description_content_type="text/markdown",
-    extras_require=extras,
     entry_points={
         "console_scripts": ["sllm-store=sllm_store.cli:main"],
     },

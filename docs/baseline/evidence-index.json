@@ -23,5 +23,29 @@
       "scope": "Real backend objects; no Controller/Ray/HTTP or full migration acceptance"
     }
   ],
-  "current_integration_gpu_results": []
+  "current_integration_gpu_results": [],
+  "stage_a_sources": [
+    {
+      "source": "candidate02 cumulative patch",
+      "sha256": "0c8302d23a523ee8406f0d624cd0a08b1e8b1079d8481dd232f80e11b212e0e7",
+      "scope": "8-file source audit, pristine-base applicability only"
+    },
+    {
+      "source": "https://raw.githubusercontent.com/vllm-project/vllm/v0.31.0/vllm/engine/arg_utils.py",
+      "source_sha256": "95be1adb96f55933f6a52260c8cb2181d04707401ca21d97c33108c5ab58f3ac",
+      "extraction": "AST annotated class fields in EngineArgs and AsyncEngineArgs; no import or execution",
+      "scope": "Field-name projection tests only; real engine constructor validation remains pending"
+    },
+    {
+      "image": "nvidia/cuda:13.0.2-devel-ubuntu24.04",
+      "index_digest": "sha256:5dc1bca23d05bd37b011be68ec470c03b403a5da07ec3a86e41af9470e9d0cc6",
+      "linux_amd64_digest": "sha256:0eee3094c71518ad31d011a594ae6ed6de72959ee07e318cb31cffe71690e90c"
+    },
+    {
+      "image": "ghcr.io/astral-sh/uv:0.13.4",
+      "index_digest": "sha256:9f130421e930bfbdc563c00740466603f8723158e90297d07957c2294640262b",
+      "linux_amd64_digest": "sha256:f0a9c230906ab004ce4786b6e0c60995e30b2bdf585c51377026838573720993"
+    }
+  ],
+  "stage_a_acceptance_boundary": "CPU contracts and dependency lock only. No new GPU results, native Store acceptance or final image build."
 }
