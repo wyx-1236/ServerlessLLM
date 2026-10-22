@@ -141,7 +141,7 @@
       "evidence_archive_sha256": "8b2ea4817dbda1fb832e57475f4f8d2c3b358e4a69e90eb909e4fef3c614a213"
     },
     {
-      "status": "Stage C bounded checks passed; awaiting user stage review",
+      "status": "Stage C bounded checks passed and user stage review approved",
       "executable_commit": "1478c0acd6d5f8ceca87d4cd1c8cafcb5bc8510a",
       "batch": "20261022-103635",
       "server": "inspur-gpu-12",
@@ -353,7 +353,7 @@
     "acceptance_boundary": "Native Qwen3-0.6B preparation and independent offline Store restore only; not Controller/Ray/HTTP, lifecycle, migration, TP2, graph mode, model matrix or performance acceptance"
   },
   "stage_c_runtime_qualification": {
-    "status": "Stage C bounded checks passed; awaiting user stage review",
+    "status": "Stage C bounded checks passed and user stage review approved",
     "executable_commit": "1478c0acd6d5f8ceca87d4cd1c8cafcb5bc8510a",
     "batch": "20261022-103635",
     "server": "inspur-gpu-12",
@@ -436,5 +436,37 @@
     "evidence_archive_sha256": "d1a9903a94ed47e80546989c5261f454d55a963485defb0c2ec57b7f6c579316",
     "evidence_location": "External engine-upgrade-20261022/stageC collection; local and server archive hashes verified",
     "acceptance_boundary": "One-host private two-node Ray cluster, one Qwen3-0.6B model, BF16/TP1/eager. Does not qualify original migration, TP2, graph, multi-model isolation, embedding GPU, other models, performance or final serving image."
+  },
+  "stage_d1_cpu_candidate": {
+    "status": "CPU candidate verified; GPU migration qualification and D1 stage review pending",
+    "source_base_commit": "99acc291e050230452cd83ddb5bf0fb74b522c69",
+    "cpu": {
+      "result": "356 passed",
+      "elapsed_seconds": 47.42,
+      "profile": "WSL stageA CPU environment; CUDA_VISIBLE_DEVICES empty",
+      "xml": "External stageD1/cpu-final.xml"
+    },
+    "characterization": {
+      "result": "13 passed in 3.77 s before repairs",
+      "meaning": "Observed defects, not acceptance",
+      "preserved_copy": "External stageD1/test_migration_contract_before_repairs.py"
+    },
+    "repairs": [
+      "Canonical Router pools and Controller constructor compatibility",
+      "Cancellation-safe request finalization and owned target creation/cleanup",
+      "Atomic reservation ownership/capacity and canceled allocation recheck under lock",
+      "Failed migration cannot publish dependent allocation; partial successful moves retained",
+      "Replay error bodies propagate; source cleanup attempted after shutdown errors"
+    ],
+    "reviews": "Scheduler, Router and manual qualifier specification/quality reviews passed; final bounded cross-component review found no new blockers. GPU runtime remains unverified.",
+    "runtime_pending": [
+      "Two distinct physical GPU UUID bindings",
+      "Actual scheduler-triggered target load, paired source tokens and target replay",
+      "Target-specific prefix-cache counters and post-migration HTTP equality",
+      "Real initialization/replay rollback and independent GPU release"
+    ],
+    "preserved_limit": "Original delta threshold and token replay retained; no vLLM resume_generate or transparent continuation; TP2 remains separate",
+    "gpu_usage": "No D1 GPU execution; exact two-GPU approval required",
+    "evidence_location": "External engine-upgrade-20261022/stageD1; personal research vault D1 migration audit note"
   }
 }

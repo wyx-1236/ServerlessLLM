@@ -60,6 +60,37 @@ The inherited HTTP error body/status convention remains unchanged.
 Independent cleanup found an inactive unit, no owned processes, no GPU compute
 applications and 0 MiB. See [evidence index](evidence-index.json#stage_c_runtime_qualification)
 for configuration, wheel/artifact hashes, archive SHA256 and exclusions.
-Stage C technical checks passed; user stage review is pending. Original migration,
+Stage C technical checks and user stage review passed. Original migration,
 TP2, graph mode, multiple models, embedding GPU, performance and the final serving
 image remain unqualified by this batch.
+
+## D1 migration candidate (CPU verified; GPU qualification pending)
+
+The migration candidate uses the parent's canonical ready pool and request
+ledger, accepts Controller's optional LoRA constructor arguments, and joins
+request finalization even when cancellation arrives while returning a slot.
+StorageAwareScheduler records ownership and capacity before publishing a
+reservation, rechecks cancellation under the metadata lock, and does not
+publish an allocation whose prerequisite migration failed. Migration RPCs run
+outside ownership locks. Successful partial moves remain committed.
+
+Before publication, target initialization/replay failure or cancellation owns
+target shutdown, actor kill and reservation return. After atomic source/target
+publication, source retirement attempts kill and resource return even when
+shutdown fails. Router close joins owned migration work. Replay error bodies
+now propagate through `VllmBackend.resume_kv_cache`. Optional `trace_debug`
+records source snapshots and matching replay inputs for explicit qualification.
+
+These changes retain the original token replay algorithm and delta threshold.
+The final sampled sequence need not be replayed, and vLLM still lacks
+`resume_generate`: abort/cancel is not transparent continuation. LoRA argument
+compatibility does not qualify LoRA serving. See the
+[scoped plan](migration-lifecycle-plan.md) and
+[CPU evidence](evidence-index.json#stage_d1_cpu_candidate).
+
+`scripts/baseline/qualify_migration.py` is a manual, separately approved
+two-GPU runner. It requires real scheduler-triggered migration, paired token
+traces, target cache counters, HTTP equality and real initialization/replay
+rollback evidence, followed by cleanup. A zero-weight allocation probe exercises
+the unchanged planner; it does not qualify a second serving model. CPU tests
+of this runner do not establish any of those runtime outcomes.

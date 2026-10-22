@@ -1,7 +1,7 @@
 # ServerlessLLM-vLLM Baseline 工程入口
 
 本目录保存独立 Baseline 的升级设计、来源和证据索引。目标为 vLLM 0.31.0；
-阶段 B 的原生 Store 流水线与阶段 C 的限定服务链已实测通过；阶段 C 等待用户审查，迁移、TP2 和模型/性能矩阵仍待后续阶段。
+阶段 B 的原生 Store 流水线与阶段 C 的限定服务链已实测并通过用户阶段审查；迁移、TP2 和模型/性能矩阵仍待后续阶段。
 
 - [权威升级设计](engine-upgrade.md)：架构、兼容边界、阶段与验证要求。
 - [仓库建立指南](repository-bootstrap.md)：Fork、独立 clone、固定上游及分支。
@@ -11,6 +11,7 @@
 - [契约与补丁审计](patch-audit.md)：继承行为、缺陷与配置映射边界。
 - [Linux 环境](environment.md)：依赖锁、CPU 检查及候选镜像配方。
 - [服务生命周期](service-lifecycle.md)：后端/控制面所有权、关闭和手动限定验证入口。
+- [迁移生命周期执行计划](migration-lifecycle-plan.md)：D1 原版调用链和资源回收的 scoped delta；不是已验证迁移资格。
 - [Store 产物契约](store-artifact.md)：字节布局、逻辑张量视图和提交/复用校验。
 
 ## 仓库与部署身份
@@ -27,6 +28,11 @@
 `scripts/baseline/qualify_service.py`，必须由获批的有界隔离 runner 执行，
 具体前提见 [服务生命周期](service-lifecycle.md)。这不是最终 serving 镜像或通用部署资格；部署绑定确定 commit/tag。
 模型权重、Store 产物、依赖缓存和大型结果保存在工程外，不纳入 Git。
+
+D1 迁移候选已修复 Router/调度器的请求、actor 和预留所有权，并通过 356 项
+CPU baseline 检查；双卡原生迁移仍待单独获批后实测。手动入口为
+`scripts/baseline/qualify_migration.py`。透明续写能力仍有缺口，详见
+[迁移候选边界](service-lifecycle.md#d1-migration-candidate-cpu-verified-gpu-qualification-pending)。
 
 ## 必须保留的执行关卡
 

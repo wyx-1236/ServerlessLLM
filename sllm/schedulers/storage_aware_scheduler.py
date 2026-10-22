@@ -77,28 +77,13 @@ class StorageAwareScheduler(FcfsScheduler):
         logger.info("Starting control loop")
         while self.running:
             loading_requests = []
-            logger.info(f"Loading requests: {loading_requests}")
             async with self.queue_lock:
                 for (
                     model_name,
                     loading_queue,
                 ) in self.model_loading_queues.items():
-                    for idx, (
-                        request_time,
-                        num_gpus,
-                        allocation_result,
-                    ) in enumerate(loading_queue):
-                        loading_requests.append(
-                            (
-                                model_name,
-                                idx,
-                                request_time,
-                                num_gpus,
-                                allocation_result,
-                            )
-                        )
-            if loading_requests:
-                logger.info(f"Loading requests are: {loading_requests}")
+                    for idx, entry in enumerate(loading_queue):
+                        loading_requests.append((model_name, idx, *entry))
             if self.store_manager is None:
                 try:
                     self.store_manager = ray.get_actor("store_manager")
@@ -106,20 +91,14 @@ class StorageAwareScheduler(FcfsScheduler):
                     logger.error("Store manager not found")
                     await asyncio.sleep(1)
                     continue
-            # first come first serve
-            if len(loading_requests) > 0:
-                worker_nodes = await self._get_worker_nodes()
-                logger.info(f"Worker nodes: {worker_nodes}")
+            if loading_requests:
+                await self._get_worker_nodes()
                 model_info = await self.store_manager.get_model_info.remote()
-                logger.info(f"Model info: {model_info}")
                 store_info = await self.store_manager.get_store_info.remote()
-                logger.info(f"Store info: {store_info}")
                 hardware_info = (
                     await self.store_manager.get_hardware_info.remote()
                 )
-                logger.info(f"Hardware info: {hardware_info}")
                 loading_requests.sort(key=lambda x: x[1])
-                logger.info(f"Sorted loading requests: {loading_requests}")
                 for (
                     model_name,
                     idx,
@@ -127,7 +106,10 @@ class StorageAwareScheduler(FcfsScheduler):
                     num_gpus,
                     allocation_result,
                 ) in loading_requests:
-                    logger.info(f"Processing request for model {model_name}")
+                    if allocation_result.done():
+                        continue
+                    async with self.metadata_lock:
+                        worker_nodes = copy.deepcopy(self.worker_nodes)
                     scheduling_options = await self.schedule(
                         model_name,
                         num_gpus,
@@ -136,75 +118,89 @@ class StorageAwareScheduler(FcfsScheduler):
                         store_info,
                         hardware_info,
                     )
-                    # sort by latency
-                    if scheduling_options:
-                        scheduling_options.sort(
-                            key=lambda x: (x.latency, x.node_id)
-                        )
-                        logger.info(
-                            f"Sorted scheduling options: {scheduling_options}"
-                        )
-                        allocation_plan = scheduling_options[0]
-                        if allocation_plan.migration_plans is not None:
-                            # execute migration plans
-                            for (
-                                migration_plan
-                            ) in allocation_plan.migration_plans.plans:
-                                source_instance = migration_plan.source_instance
-                                target_model = source_instance.model_name
-                                target_request_router = ray.get_actor(
-                                    target_model, namespace="models"
+                    if not scheduling_options or allocation_result.done():
+                        continue
+                    scheduling_options.sort(
+                        key=lambda x: (x.latency, x.node_id)
+                    )
+                    allocation_plan = scheduling_options[0]
+                    migrations_succeeded = True
+                    if allocation_plan.migration_plans is not None:
+                        for (
+                            migration_plan
+                        ) in allocation_plan.migration_plans.plans:
+                            if allocation_result.done():
+                                migrations_succeeded = False
+                                break
+                            try:
+                                router = ray.get_actor(
+                                    migration_plan.source_instance.model_name,
+                                    namespace="models",
                                 )
-                                logger.info(
-                                    f"Executing migration plan: {migration_plan}"
-                                )
-                                target_node_id = migration_plan.target_node_id
-                                logger.info(
-                                    f"Target node {target_node_id} for model {target_model}"
-                                )
-                                worker_nodes[target_node_id]["free_gpu"] -= (
-                                    num_gpus
-                                )
-                                logger.info(
-                                    f"Free GPU on node {target_node_id}: {worker_nodes[target_node_id]['free_gpu']}"
-                                )
-                                try:
-                                    target_instance_id = await target_request_router.execute_migration_plan.remote(
+                                target_instance_id = (
+                                    await router.execute_migration_plan.remote(
                                         migration_plan
                                     )
-                                except Exception as e:
-                                    logger.error(
-                                        f"Failed to execute migration plan: {e}"
-                                    )
-                                    target_instance_id = None
-                                if target_instance_id is None:
-                                    logger.info(
-                                        f"Failed to execute migration plan: {migration_plan}"
-                                    )
-                                    worker_nodes[target_node_id][
-                                        "free_gpu"
-                                    ] += num_gpus
-                                else:
-                                    logger.info(
-                                        f"Migrated instance {target_model} to node {target_node_id} instance {target_instance_id}"
-                                    )
-
-                        node_id = allocation_plan.node_id
-                        async with self.queue_lock:
-                            self.model_loading_queues[model_name].pop(idx)
-                            logger.info(
-                                f"Allocated node {node_id} for model {model_name}"
-                            )
+                                )
+                            except Exception as exc:
+                                logger.error(
+                                    f"Failed to execute migration plan: {exc}"
+                                )
+                                target_instance_id = None
+                            if target_instance_id is None:
+                                migrations_succeeded = False
+                                break
+                    if not migrations_succeeded:
+                        continue
+                    node_id = allocation_plan.node_id
+                    # Router callbacks own migration reservations. Never write a
+                    # speculative planning snapshot back over committed metadata.
+                    async with self.queue_lock:
+                        if allocation_result.done():
+                            continue
+                        owner = next(
+                            (
+                                key
+                                for key, future in self.pending_allocations.items()
+                                if future is allocation_result
+                            ),
+                            None,
+                        )
+                        entry = (request_time, num_gpus, allocation_result)
+                        queue = self.model_loading_queues.get(model_name, [])
+                        if owner is None or entry not in queue:
+                            continue
+                        async with self.metadata_lock:
+                            # Cancellation can run while this lock is awaited.
+                            if (
+                                allocation_result.done()
+                                or self.pending_allocations.get(owner)
+                                is not allocation_result
+                            ):
+                                continue
+                            node = self.worker_nodes.get(node_id)
+                            if node is None or node["free_gpu"] < num_gpus:
+                                continue
+                            if owner[1] in self.model_instance.get(
+                                owner[0], {}
+                            ):
+                                continue
+                            self.model_instance.setdefault(owner[0], {})[
+                                owner[1]
+                            ] = node_id
+                            node["free_gpu"] -= num_gpus
+                            queue.remove(entry)
                             allocation_result.set_result(node_id)
-
-                        worker_nodes[node_id]["free_gpu"] -= num_gpus
+                    try:
                         await self.store_manager.load_to_host.remote(
                             node_id, model_name
                         )
-                    else:
-                        logger.info(f"No available node for model {model_name}")
-                await self._update_worker_nodes(worker_nodes)
-
+                    except Exception as exc:
+                        # Publication transferred cleanup ownership to the caller.
+                        logger.error(
+                            f"Host load failed for model {model_name} "
+                            f"on node {node_id}: {exc}"
+                        )
             await asyncio.sleep(1)
 
     async def schedule(
@@ -289,12 +285,14 @@ class StorageAwareScheduler(FcfsScheduler):
         migratable_instances = []
         request_routers = {}
         async with self.metadata_lock:
+            model_instance = copy.deepcopy(self.model_instance)
+        if model_instance:
             logger.info(f"Checking migratable instances for model {model_name}")
-            for target_model_name in self.model_instance:
+            for target_model_name in model_instance:
                 # Skip the instances that is already running the model
                 if target_model_name == model_name:
                     continue
-                for instance_id, node_id in self.model_instance[
+                for instance_id, node_id in model_instance[
                     target_model_name
                 ].items():
                     if node_id == source_node_id:
@@ -434,13 +432,32 @@ class StorageAwareScheduler(FcfsScheduler):
             return None
 
     async def mark_resource(
-        self, model_name: str, instance_id: str, node_id: int
+        self,
+        model_name: str,
+        instance_id: str,
+        node_id: int,
+        resources: Optional[Mapping] = None,
     ) -> bool:
-        logger.info(f"Model {model_name} instance {instance_id} marked")
+        num_gpus = 1 if resources is None else resources.get("num_gpus", 0)
+        if (
+            isinstance(num_gpus, bool)
+            or not isinstance(num_gpus, int)
+            or num_gpus <= 0
+        ):
+            return False
         async with self.metadata_lock:
-            if model_name not in self.model_instance:
-                self.model_instance[model_name] = {}
-            self.model_instance[model_name][instance_id] = node_id
+            node = self.worker_nodes.get(node_id)
+            if node is None:
+                return False
+            instances = self.model_instance.get(model_name, {})
+            if instance_id in instances:
+                return instances[instance_id] == node_id
+            if node["free_gpu"] < num_gpus:
+                return False
+            self.model_instance.setdefault(model_name, {})[instance_id] = (
+                node_id
+            )
+            node["free_gpu"] -= num_gpus
         return True
 
     async def set_model_scheduler_config(

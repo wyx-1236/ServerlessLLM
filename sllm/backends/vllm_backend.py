@@ -297,12 +297,15 @@ class VllmBackend(SllmBackend):
             return snapshots
 
     async def resume_kv_cache(self, request_datas):
-        await asyncio.gather(
+        results = await asyncio.gather(
             *(
                 self.generate({"input_tokens": tokens, "max_tokens": 1})
                 for tokens in request_datas
             )
         )
+        for result in results:
+            if isinstance(result, dict) and "error" in result:
+                raise RuntimeError(f"KV cache replay failed: {result['error']}")
 
     async def encode(self, request_data):
         if not request_data:
