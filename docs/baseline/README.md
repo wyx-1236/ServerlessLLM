@@ -10,6 +10,7 @@
 - [历史证据索引](evidence-index.json)：外部归档摘要及适用范围。
 - [契约与补丁审计](patch-audit.md)：继承行为、缺陷与配置映射边界。
 - [Linux 环境](environment.md)：依赖锁、CPU 检查及候选镜像配方。
+- [Store 产物契约](store-artifact.md)：字节布局、逻辑张量视图和提交/复用校验。
 
 ## 仓库与部署身份
 

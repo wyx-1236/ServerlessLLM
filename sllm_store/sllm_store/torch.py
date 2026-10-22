@@ -84,13 +84,15 @@ def load_dict(
     model_path: Union[str, os.PathLike],
     device_map: Dict[str, int],
     storage_path: Optional[str] = None,
+    server_address: str = "127.0.0.1:8073",
 ):
     replica_uuid, state_dict = load_dict_non_blocking(
-        model_path, device_map, storage_path
+        model_path, device_map, storage_path, server_address=server_address
     )
 
-    client = SllmStoreClient("127.0.0.1:8073")
-    client.confirm_model_loaded(model_path, replica_uuid)
+    client = SllmStoreClient(server_address)
+    if client.confirm_model_loaded(model_path, replica_uuid) is False:
+        raise RuntimeError(f"Failed to confirm Store restore: {model_path}")
 
     return state_dict
 
@@ -99,8 +101,9 @@ def load_dict_non_blocking(
     model_path: Optional[Union[str, os.PathLike]],
     device_map: Dict[str, int],
     storage_path: Optional[str] = None,
+    server_address: str = "127.0.0.1:8073",
 ):
-    client = SllmStoreClient("127.0.0.1:8073")
+    client = SllmStoreClient(server_address)
     ret = client.load_into_cpu(model_path)
     if not ret:
         raise ValueError(f"Failed to load model {model_path} into CPU")

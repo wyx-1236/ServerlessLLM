@@ -19,7 +19,8 @@
   "sampling": {
     "temperature": 0.0,
     "max_tokens": 8,
-    "ignore_eos": false
+    "ignore_eos": false,
+    "logprobs": 5
   },
   "input_policy": "Raw text without chat template. Verify frozen snapshot/tokenizer/input IDs before GPU execution. No FP16 reconversion is admitted.",
   "expected_checks": [

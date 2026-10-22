@@ -72,4 +72,14 @@ docker build --platform linux/amd64 -f Dockerfile.baseline \
 阶段 B 的 smoke 输入先固定 Qwen3-0.6B、BF16、TP1、eager、512 上下文与短
 raw prompt。checkpoint revision 与历史锁定身份一致，执行前复核本地 snapshot
 和 tokenizer/token IDs。该输入不是 GPU 批准，也不是已实现的自动导出启动器。
-具体服务器和物理 GPU 索引只能在该阶段获准后确定和申请。
+申请前核对具体服务器与物理 GPU 索引，报告逐卡锁模式和用途；批准后才能申请。
+
+阶段 B 候选实现的准备接口及隔离条件见
+[Store 产物契约](store-artifact.md#preparation-entry-and-ownership)。源快照可在 CPU
+阶段通过 `freeze_source` 冻结并保存 JSON 凭据，再由准备入口读取与复核。完整
+准备接口可能初始化 CUDA，不能把它作为无需批准的预检。
+
+CPU 张量测试使用独立的 hash 锁 `tests/baseline/requirements-tensor-cpu.txt`，
+包含 Torch CPU build；不修改 serving 的 `uv.lock`。安装和测试命令见
+[测试入口](../../tests/baseline/README.md#cpu-torch-tensor-profile)。轻量 profile
+继续要求没有 Torch/vLLM；CI 显式要求 g++，避免原生磁盘 writer 测试静默跳过。

@@ -78,6 +78,8 @@ std::unordered_map<std::string, uint64_t> SaveTensors(
     showProgressBar(progress, "Saving tensors: ");
   }
 
+  // Flush and report I/O errors before Python can publish the tensor index.
+  writer.finish();
   return tensor_offsets;
 }
 

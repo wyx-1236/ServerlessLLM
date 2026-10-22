@@ -17,6 +17,7 @@
 //  ----------------------------------------------------------------------------
 #pragma once
 
+#include <exception>
 #include <string>
 
 const size_t kAlignment = 4096;       // 4k
@@ -25,13 +26,21 @@ const size_t kBufferSize = 1L << 30;  // 1GB
 // A write buffer that writes to a file (4k aligned).
 class AlignedBuffer {
  public:
-  explicit AlignedBuffer(const std::string& filename);
+  explicit AlignedBuffer(const std::string& filename,
+                         size_t buffer_size = kBufferSize);
   ~AlignedBuffer();
+  AlignedBuffer(const AlignedBuffer&) = delete;
+  AlignedBuffer& operator=(const AlignedBuffer&) = delete;
 
   size_t writeData(const void* data, size_t size);
   size_t writePadding(size_t padding_size);
+  void finish();
 
  private:
+  void flush();
+  void writeAll(size_t size);
+  void closeAfterFailure();
+  std::exception_ptr failure_;
   int fd_;
   size_t buf_size_;
   size_t buf_pos_;

@@ -20,94 +20,147 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <algorithm>
+#include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <stdexcept>
+#include <system_error>
 
-AlignedBuffer::AlignedBuffer(const std::string& filename)
-    : fd_(-1), buf_size_(kBufferSize), buf_pos_(0), file_offset_(0) {
-  fd_ = open(filename.c_str(), O_WRONLY | O_CREAT | O_DIRECT, 0644);
-  if (fd_ < 0) {
-    std::cerr << "Failed to open file " << filename << std::endl;
+AlignedBuffer::AlignedBuffer(const std::string& filename, size_t buffer_size)
+    : fd_(-1),
+      buf_size_(buffer_size),
+      buf_pos_(0),
+      file_offset_(0),
+      buffer_(nullptr) {
+  if (!buf_size_ || buf_size_ % kAlignment) {
+    throw std::invalid_argument(
+        "Buffer size must be a positive multiple of 4096");
   }
-  buffer_ = aligned_alloc(kAlignment, kBufferSize);
+  fd_ = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_DIRECT, 0644);
+  if (fd_ < 0) {
+    throw std::system_error(errno, std::generic_category(), "open " + filename);
+  }
+  buffer_ = aligned_alloc(kAlignment, buf_size_);
+  if (!buffer_) {
+    close(fd_);
+    fd_ = -1;
+    throw std::bad_alloc();
+  }
 }
 
 AlignedBuffer::~AlignedBuffer() {
-  // if the buffer is not written to file, write it to file
-  if (buffer_ && buf_pos_) {
-    pwrite(fd_, buffer_, buf_pos_, file_offset_);
+  try {
+    if (!failure_) {
+      finish();
+    }
+  } catch (const std::exception& error) {
+    // Explicit finish() is required by SaveTensors to propagate failures.
+    std::cerr << "Failed to finish tensor file: " << error.what() << std::endl;
   }
-  if (buffer_) {
-    free(buffer_);
-  }
+  free(buffer_);
   if (fd_ >= 0) {
     close(fd_);
   }
 }
 
-size_t AlignedBuffer::writeData(const void* data, size_t size) {
+void AlignedBuffer::writeAll(size_t size) {
   size_t written = 0;
   while (written < size) {
-    // if data size is larger than buffer size and buffer is empty
-    // write data directly to file
-    if (size - written > buf_size_ && buf_pos_ == 0) {
-      size_t direct_write_size = (size - written) / kAlignment * kAlignment;
-      // allocate aligned memory
-      void* direct_write_buf = aligned_alloc(kAlignment, direct_write_size);
-      if (!direct_write_buf) {
-        char err_msg[256];
-        strerror_r(errno, err_msg, sizeof(err_msg));
-        std::cerr << "Failed to allocate aligned memory: " << err_msg
-                  << std::endl;
-        std::cerr << "kAlignment: " << kAlignment
-                  << " direct_write_size: " << direct_write_size;
-        exit(1);
+    ssize_t result = pwrite(fd_, static_cast<char*>(buffer_) + written,
+                            size - written, file_offset_ + written);
+    if (result < 0) {
+      if (errno == EINTR) {
+        continue;
       }
-      memcpy(direct_write_buf, (char*)data + written, direct_write_size);
-      ssize_t ret =
-          pwrite(fd_, direct_write_buf, direct_write_size, file_offset_);
-      if (ret < 0 || ret != direct_write_size) {
-        std::cerr << "Failed to write to file, ret: " << ret
-                  << " errno: " << errno << std::endl;
-        return written;
-      }
-      written += direct_write_size;
-      file_offset_ += direct_write_size;
-      free(direct_write_buf);
+      throw std::system_error(errno, std::generic_category(), "pwrite tensor");
     }
-    size_t to_write = std::min(size - written, buf_size_ - buf_pos_);
-    memcpy(static_cast<char*>(buffer_) + buf_pos_, (char*)data + written,
-           to_write);
-    buf_pos_ += to_write;
-    written += to_write;
-    if (buf_pos_ == buf_size_) {
-      ssize_t ret = pwrite(fd_, buffer_, buf_size_, file_offset_);
-      if (ret < 0 || ret != buf_size_) {
-        std::cerr << "Failed to write to file, ret: " << ret
-                  << " errno: " << errno << std::endl;
-        return written;
-      }
-      buf_pos_ = 0;
-      file_offset_ += buf_size_;
+    // Continuing an unaligned short write would violate O_DIRECT constraints.
+    if (result == 0 || static_cast<size_t>(result) % kAlignment) {
+      throw std::runtime_error("Incomplete unaligned tensor write");
     }
+    written += static_cast<size_t>(result);
   }
-  return written;
+}
+
+void AlignedBuffer::flush() {
+  writeAll(buf_size_);
+  file_offset_ += buf_size_;
+  buf_pos_ = 0;
+}
+
+size_t AlignedBuffer::writeData(const void* data, size_t size) {
+  if (failure_) {
+    std::rethrow_exception(failure_);
+  }
+  if (fd_ < 0) {
+    throw std::logic_error("Tensor file is already finished");
+  }
+  try {
+    size_t written = 0;
+    while (written < size) {
+      size_t to_write = std::min(size - written, buf_size_ - buf_pos_);
+      memcpy(static_cast<char*>(buffer_) + buf_pos_,
+             static_cast<const char*>(data) + written, to_write);
+      buf_pos_ += to_write;
+      written += to_write;
+      if (buf_pos_ == buf_size_) {
+        flush();
+      }
+    }
+    return written;
+  } catch (...) {
+    closeAfterFailure();
+    throw;
+  }
 }
 
 size_t AlignedBuffer::writePadding(size_t padding_size) {
   if (padding_size >= 8) {
-    std::cerr << "Padding size should be less than 8 bytes" << std::endl;
-    return 0;
+    throw std::invalid_argument("Tensor padding must be less than 8 bytes");
   }
-  buf_pos_ += padding_size;
-  if (buf_pos_ > buf_size_) {
-    std::cerr << "Padding size is too large" << std::endl;
-    return 0;
+  const char zeros[8] = {};
+  return writeData(zeros, padding_size);
+}
+
+void AlignedBuffer::finish() {
+  if (failure_) {
+    std::rethrow_exception(failure_);
   }
-  if (buf_pos_ == buf_size_) {
-    pwrite(fd_, buffer_, buf_pos_, file_offset_);
-    buf_pos_ = 0;
-    file_offset_ += buf_size_;
+  if (fd_ < 0) {
+    return;
   }
-  return padding_size;
+  try {
+    const size_t logical_size = file_offset_ + buf_pos_;
+    if (buf_pos_) {
+      const size_t aligned_size =
+          (buf_pos_ + kAlignment - 1) / kAlignment * kAlignment;
+      memset(static_cast<char*>(buffer_) + buf_pos_, 0,
+             aligned_size - buf_pos_);
+      writeAll(aligned_size);
+    }
+    // Preserve Store's logical concatenated offsets; disk alignment is private.
+    if (ftruncate(fd_, logical_size) < 0 || fsync(fd_) < 0) {
+      throw std::system_error(errno, std::generic_category(), "finish tensor");
+    }
+    const int fd = fd_;
+    fd_ = -1;
+    if (close(fd) < 0) {
+      throw std::system_error(errno, std::generic_category(), "close tensor");
+    }
+  } catch (...) {
+    closeAfterFailure();
+    throw;
+  }
+}
+
+void AlignedBuffer::closeAfterFailure() {
+  // A failed direct write may already have changed the file. Never retry it
+  // or let a later finish falsely report this checkpoint as complete.
+  failure_ = std::current_exception();
+  if (fd_ >= 0) {
+    close(fd_);
+    fd_ = -1;
+  }
 }

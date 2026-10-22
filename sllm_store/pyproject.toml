@@ -65,3 +65,6 @@ ignore = []
 [tool.isort]
 use_parentheses = true
 skip_gitignore = true
+
+[project.entry-points."vllm.general_plugins"]
+sllm_store = "sllm_store.vllm_plugin:register"

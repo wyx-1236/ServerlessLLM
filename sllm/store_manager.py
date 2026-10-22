@@ -72,22 +72,42 @@ class SllmLocalStore:
         self, model_name: str, backend: str, backend_config
     ):
         async with self.lock:
+            if backend == "vllm":
+                tensor_parallel_size = backend_config.get(
+                    "tensor_parallel_size", 1
+                )
+                if (
+                    not isinstance(tensor_parallel_size, int)
+                    or isinstance(tensor_parallel_size, bool)
+                    or tensor_parallel_size <= 0
+                ):
+                    raise ValueError(
+                        "tensor_parallel_size must be a positive integer"
+                    )
             if model_name in self.disk_models:
                 logger.error(f"{model_name} already registered")
+                if backend == "vllm":
+                    return self.disk_models[model_name][1]
                 return
             model_path = self._get_model_path(model_name, backend)
             if backend == "transformers":
                 model_size = self.client.register_model(model_path)
                 self.disk_models[model_name] = ([model_path], model_size)
             elif backend == "vllm":
-                tensor_parallel_size = backend_config.get(
-                    "tensor_parallel_size", 1
-                )
                 model_size = 0
                 model_path_list = []
                 for rank in range(tensor_parallel_size):
                     model_rank_path = os.path.join(model_path, f"rank_{rank}")
-                    model_size += self.client.register_model(model_rank_path)
+                    rank_size = self.client.register_model(model_rank_path)
+                    if (
+                        not isinstance(rank_size, int)
+                        or isinstance(rank_size, bool)
+                        or rank_size <= 0
+                    ):
+                        raise ValueError(
+                            f"Invalid registered size for {model_rank_path}: {rank_size!r}"
+                        )
+                    model_size += rank_size
                     model_path_list.append(model_rank_path)
                 self.disk_models[model_name] = (model_path_list, model_size)
             logger.info(f"{model_name} registered, {self.disk_models}")
@@ -360,6 +380,16 @@ class StoreManager:
             return
         backend_config = model_config.get("backend_config", {})
         placement_config = model_config.get("placement_config", {})
+        if backend == "vllm":
+            if (
+                "dtype" in backend_config
+                and "torch_dtype" in backend_config
+                and backend_config["dtype"] != backend_config["torch_dtype"]
+            ):
+                raise ValueError("Conflicting dtype and torch_dtype values")
+            vllm_dtype = backend_config.get(
+                "dtype", backend_config.get("torch_dtype", "float16")
+            )
         if model_name not in self.model_info:
             self.model_storage_info[model_name] = {}
             logger.info(f"Registering new {model_name}")
@@ -445,7 +475,9 @@ class StoreManager:
                         node_id,
                         model_config.get("num_gpus", 1),
                         backend_config.get("tensor_parallel_size", 1),
-                        backend_config.get("torch_dtype", "float16"),
+                        vllm_dtype,
+                        revision=backend_config.get("revision"),
+                        source_snapshot=backend_config.get("source_snapshot"),
                     )
                 else:
                     logger.error(f"Backend {backend} not supported")
@@ -526,6 +558,9 @@ class StoreManager:
         num_gpus,
         tensor_parallel_size,
         torch_dtype,
+        *,
+        revision=None,
+        source_snapshot=None,
     ):
         logger.info(
             f"Downloading {pretrained_model_name_or_path} to node {node_id}"
@@ -538,9 +573,14 @@ class StoreManager:
             )
             .remote()
         )
-        return await vllm_backend_downloader.download_vllm_model.remote(
-            model_name,
-            pretrained_model_name_or_path,
-            torch_dtype,
-            tensor_parallel_size,
-        )
+        try:
+            return await vllm_backend_downloader.download_vllm_model.remote(
+                model_name,
+                pretrained_model_name_or_path,
+                torch_dtype,
+                tensor_parallel_size,
+                revision=revision,
+                source_snapshot=source_snapshot,
+            )
+        finally:
+            ray.kill(vllm_backend_downloader, no_restart=True)

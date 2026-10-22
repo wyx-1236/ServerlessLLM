@@ -18,32 +18,61 @@
 #include "tensor_writer.h"
 
 #include <iostream>
+#include <stdexcept>
 
 TensorWriter::TensorWriter(const std::string& filename) : filename_(filename) {}
 
 TensorWriter::~TensorWriter() {}
 
 uint64_t TensorWriter::writeRecord(const char* data, size_t size) {
-  if (partition_idx_ == -1 || partition_size_ + size > kPartitionMaxSize) {
-    // create a new partition
-    partition_idx_++;
-    partition_size_ = 0;
-    std::string partition_filename =
-        filename_ + "_" + std::to_string(partition_idx_);
-    buffer_ = std::make_unique<AlignedBuffer>(partition_filename);
+  if (failure_) {
+    std::rethrow_exception(failure_);
   }
-
-  uint64_t start_offset = offset_;
-  // make sure the data is 64-bit aligned
-  size_t padding = (size % 8) ? (8 - size % 8) : 0;
-  size_t written = buffer_->writeData(data, size);
-  if (padding) {
-    written += buffer_->writePadding(padding);
+  if (finished_) {
+    throw std::logic_error("Tensor writer is already finished");
   }
-  offset_ += written;
-  partition_size_ += written;
-  // std::cerr << "writeRecord: " << partition_idx_ << " " << partition_size_ <<
-  // " " << kPartitionMaxSize << std::endl;
+  try {
+    if (partition_idx_ == -1 || partition_size_ + size > kPartitionMaxSize) {
+      if (buffer_) {
+        buffer_->finish();
+      }
+      // Publish the partition state only after its buffer is constructed.
+      const int next_partition = partition_idx_ + 1;
+      std::string partition_filename =
+          filename_ + "_" + std::to_string(next_partition);
+      buffer_ = std::make_unique<AlignedBuffer>(partition_filename);
+      partition_idx_ = next_partition;
+      partition_size_ = 0;
+    }
 
-  return start_offset;
+    uint64_t start_offset = offset_;
+    // make sure the data is 64-bit aligned
+    size_t padding = (size % 8) ? (8 - size % 8) : 0;
+    size_t written = buffer_->writeData(data, size);
+    if (padding) {
+      written += buffer_->writePadding(padding);
+    }
+    offset_ += written;
+    partition_size_ += written;
+
+    return start_offset;
+  } catch (...) {
+    failure_ = std::current_exception();
+    throw;
+  }
+}
+
+void TensorWriter::finish() {
+  if (failure_) {
+    std::rethrow_exception(failure_);
+  }
+  try {
+    if (buffer_) {
+      buffer_->finish();
+    }
+    finished_ = true;
+  } catch (...) {
+    failure_ = std::current_exception();
+    throw;
+  }
 }

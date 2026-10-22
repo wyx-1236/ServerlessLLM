@@ -9,9 +9,7 @@ on:
       - 'pyproject.toml'
       - 'requirements*.txt'
       - 'setup.py'
-      - 'sllm_store/pyproject.toml'
-      - 'sllm_store/requirements*.txt'
-      - 'sllm_store/setup.py'
+      - 'sllm_store/**'
       - 'uv.lock'
       - '.github/workflows/baseline-cpu.yml'
   pull_request:
@@ -34,6 +32,23 @@ jobs:
           version: '0.13.4'
           python-version: '3.12.13'
       - run: uv lock --check
+      - run: command -v g++
       - run: uv export --frozen --only-group cpu -o /tmp/sllm-cpu.lock
       - run: uv venv /tmp/sllm-cpu && uv pip sync --python /tmp/sllm-cpu/bin/python --require-hashes /tmp/sllm-cpu.lock
       - run: /tmp/sllm-cpu/bin/python -m pytest tests/baseline -q
+
+  tensor-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CUDA_VISIBLE_DEVICES: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.13.4'
+          python-version: '3.12.13'
+      - run: uv venv /tmp/sllm-tensor-cpu
+      - run: uv pip sync --python /tmp/sllm-tensor-cpu/bin/python --require-hashes --torch-backend cpu tests/baseline/requirements-tensor-cpu.txt
+      - run: /tmp/sllm-tensor-cpu/bin/python -c "import torch; assert torch.version.cuda is None; assert not torch.cuda.is_initialized()"
+      - run: /tmp/sllm-tensor-cpu/bin/python -m pytest sllm_store/tests/python/test_tensor_layout.py tests/baseline/test_vllm_store_plugin.py tests/baseline/test_artifact.py -q

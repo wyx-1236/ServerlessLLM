@@ -1,0 +1,5 @@
+# Separate Linux test profile; never use this for CUDA serving or native ABI.
+torch==2.13.0+cpu
+pytest==8.4.2
+numpy==2.3.5
+setuptools==80.10.2

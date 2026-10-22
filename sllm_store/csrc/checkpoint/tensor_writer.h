@@ -17,6 +17,7 @@
 //  ----------------------------------------------------------------------------
 #pragma once
 
+#include <exception>
 #include <memory>
 #include <string>
 #include <vector>
@@ -32,9 +33,12 @@ class TensorWriter final {
   ~TensorWriter();
 
   uint64_t writeRecord(const char* data, size_t size);
+  void finish();
 
  private:
+  std::exception_ptr failure_;
   size_t offset_ = 0;
+  bool finished_ = false;
   int partition_idx_ = -1;
   size_t partition_size_ = 0;
   std::string filename_;

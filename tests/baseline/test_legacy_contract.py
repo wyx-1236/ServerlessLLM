@@ -282,41 +282,59 @@ def downloader(legacy, monkeypatch):
     return module.VllmModelDownloader()
 
 
-def test_existing_incomplete_directory_is_mistaken_for_export(
+def test_downloader_delegates_even_when_output_exists(
     downloader, monkeypatch, tmp_path
 ):
-    constructed = []
-    sys.modules["vllm"].LLM = lambda **kwargs: constructed.append(kwargs)
+    calls = []
+    manifest = {"artifact": "verified"}
+    preparation = types.ModuleType("sllm.vllm_preparation")
+
+    def prepare(*args, **kwargs):
+        calls.append((args, kwargs))
+        return manifest
+
+    preparation.prepare_vllm_model = prepare
+    monkeypatch.setitem(sys.modules, "sllm.vllm_preparation", preparation)
     monkeypatch.setenv("STORAGE_PATH", str(tmp_path))
-    incomplete = tmp_path / "vllm" / "incomplete"
-    incomplete.mkdir(parents=True)
+    (tmp_path / "vllm" / "logical").mkdir(parents=True)
+    snapshot = {"source": "frozen"}
     result = downloader.download_vllm_model(
-        "incomplete",
-        str(tmp_path / "source"),
+        "logical",
+        "actual/repository",
         "bfloat16",
+        2,
+        revision="commit",
+        source_snapshot=snapshot,
     )
-    assert result is None
-    assert not constructed
-    assert not list(incomplete.iterdir())
+    assert result is manifest
+    assert calls == [
+        (
+            ("logical", "actual/repository", "bfloat16", 2),
+            {
+                "storage_path": str(tmp_path),
+                "revision": "commit",
+                "source_snapshot": snapshot,
+            },
+        )
+    ]
 
 
-def test_export_failure_propagates_and_removes_partial_output(
-    downloader, monkeypatch, tmp_path
-):
-    monkeypatch.setenv("STORAGE_PATH", str(tmp_path))
-    source = tmp_path / "source"
-    source.mkdir()
-    output = tmp_path / "vllm" / "failed"
+def test_downloader_preserves_preparation_error(downloader, monkeypatch):
+    preparation = types.ModuleType("sllm.vllm_preparation")
+    failure = ValueError("verification failed")
 
-    def fail_export(**kwargs):
-        output.mkdir(parents=True)
-        (output / "incomplete").write_bytes(b"partial")
-        raise RuntimeError("writer failed")
+    def prepare(*args, **kwargs):
+        assert args[1] == "logical"
+        raise failure
 
-    core = types.SimpleNamespace(save_serverless_llm_state=fail_export)
-    sys.modules["vllm"].LLM = lambda **kwargs: types.SimpleNamespace(
-        llm_engine=types.SimpleNamespace(engine_core=core),
-    )
-    with pytest.raises(RuntimeError, match="writer failed"):
-        downloader.download_vllm_model("failed", str(source), "bfloat16")
-    assert not output.exists()
+    preparation.prepare_vllm_model = prepare
+    monkeypatch.setitem(sys.modules, "sllm.vllm_preparation", preparation)
+    with pytest.raises(ValueError) as caught:
+        downloader.download_vllm_model("logical", None, "float16")
+    assert caught.value is failure
+
+
+@pytest.mark.parametrize("kwargs", [{"pattern": "weight"}, {"max_size": 0}])
+def test_downloader_rejects_partial_export(downloader, kwargs):
+    with pytest.raises(ValueError, match="pattern|max_size"):
+        downloader.download_vllm_model("logical", "actual", "float16", **kwargs)

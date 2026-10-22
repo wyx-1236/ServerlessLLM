@@ -47,5 +47,33 @@
       "linux_amd64_digest": "sha256:f0a9c230906ab004ce4786b6e0c60995e30b2bdf585c51377026838573720993"
     }
   ],
-  "stage_a_acceptance_boundary": "CPU contracts and dependency lock only. No new GPU results, native Store acceptance or final image build."
+  "stage_a_acceptance_boundary": "CPU contracts and dependency lock only. No new GPU results, native Store acceptance or final image build.",
+  "stage_b_cpu_candidate": {
+    "collection": "engine-upgrade-20261022/stageB",
+    "storage": "External local CPU logs and source/evidence manifest, not model artifacts or Git payload",
+    "light_profile": {
+      "environment": "Local WSL Ubuntu-22.04, uv-managed CPython 3.12.13, fresh hash-installed cpu dependency group; no Torch or vLLM installed",
+      "command": "python -m pytest tests/baseline -q",
+      "result": "201 passed, 17 skipped; skipped Torch cases run in tensor profile",
+      "log": "light-full-final.txt"
+    },
+    "tensor_profile": {
+      "lock": "tests/baseline/requirements-tensor-cpu.txt",
+      "environment": "Separate CPython 3.12.13 environment with hash-installed Torch 2.13.0+cpu; CUDA build and initialization absent",
+      "command": "python -m pytest sllm_store/tests/python/test_tensor_layout.py tests/baseline/test_vllm_store_plugin.py tests/baseline/test_artifact.py -q",
+      "result": "55 passed",
+      "log": "tensor-profile-final.txt"
+    },
+    "native_writer_scope": "57 real standalone production C++ disk-writer tests in light suite, Linux g++ and O_DIRECT, injected I/O failures; no full Torch/CUDA extension build",
+    "review_scope": "Separate bounded specification and quality reviews for writer, plugin, child runtime, parent/artifact/tensor helpers and downloader/StoreManager integration",
+    "unverified": [
+      "Real server user/network namespace availability",
+      "Final serving image and native Store extension ABI",
+      "Real vLLM native export and independent Store restore",
+      "Model parameters, persistent buffers and aliases on actual CUDA allocations",
+      "Exact tokens/top-5 logprobs, CPU/GPU memory peaks and physical CUDA/Ray cleanup"
+    ],
+    "gpu_usage": "None; no lock, allocation or engine startup",
+    "acceptance_boundary": "CPU implementation candidate only. No Stage B completion, model or GPU qualification."
+  }
 }
