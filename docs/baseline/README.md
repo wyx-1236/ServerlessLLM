@@ -30,9 +30,10 @@
 模型权重、Store 产物、依赖缓存和大型结果保存在工程外，不纳入 Git。
 
 D1 迁移候选已修复 Router/调度器的请求、actor 和预留所有权，并通过 356 项
-CPU baseline 检查；双卡原生迁移仍待单独获批后实测。手动入口为
+CPU baseline 检查。提交 `54d099e` 已完成双卡原版迁移链与回滚的 13 项限定检查，
+阶段报告等待用户审查；透明续写仍有缺口，整体验收未完成。手动入口为
 `scripts/baseline/qualify_migration.py`。透明续写能力仍有缺口，详见
-[迁移候选边界](service-lifecycle.md#d1-migration-candidate-cpu-verified-gpu-qualification-pending)。
+[迁移候选边界](service-lifecycle.md#d1-migration-candidate-bounded-checks-passed-review-pending)。
 
 ## 必须保留的执行关卡
 

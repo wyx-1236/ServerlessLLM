@@ -61,8 +61,8 @@
     "runtime_evidence": "evidence-index.json#stage_b_runtime_qualification",
     "tested_executable_commit": "fef30ee9bab49fa7bf8b8b9ff53e60b9157ef4b3"
   },
-  "code_scope": "A environment/configuration; B native writer/reader/plugin/artifact pipeline; C bounded service and lifecycle. Original migration/TP2 and broader model/metric release remain D/E.",
-  "gpu_usage": "Four Stage B batches and four Stage C batches, explicitly approved soft lock GPU 1 on inspur-gpu-12. Failures preserved; B and bounded C passed. All task workloads released with no owned PIDs, no compute apps and 0 MiB; user six-hour platform reservation unchanged.",
+  "code_scope": "A environment/configuration; B native writer/reader/plugin/artifact; C service/lifecycle; D1 repaired original migration chain and rollback. Transparent continuation, TP2 and broader release requirements remain unqualified.",
+  "gpu_usage": "Four Stage B batches and four Stage C batches, explicitly approved soft lock GPU 1 on inspur-gpu-12. Failures preserved; B and bounded C passed. All task workloads released with no owned PIDs, no compute apps and 0 MiB; user six-hour platform reservation unchanged. D1 used two separately approved batches on inspur-gpu-12 soft lock GPU 0,1; bounded original-chain checks passed, both batches released and evidence archived; platform reservations unchanged.",
   "stage_c_candidate": {
     "status": "Stage C bounded checks passed and user stage review approved",
     "tested_executable_commit": "1478c0acd6d5f8ceca87d4cd1c8cafcb5bc8510a",
@@ -77,12 +77,14 @@
     "qualification_remaining": "One-host private two-node Ray cluster, one Qwen3-0.6B model, BF16/TP1/eager. Does not qualify original migration, TP2, graph, multi-model isolation, embedding GPU, other models, performance or final serving image."
   },
   "stage_d1_candidate": {
-    "status": "356 CPU baseline checks passed; runtime migration unqualified",
+    "status": "Bounded original migration-chain and rollback checks passed; user review pending; transparent continuation remains a qualification gap",
     "plan": "migration-lifecycle-plan.md",
     "evidence": "evidence-index.json#stage_d1_cpu_candidate",
     "algorithm": "Original latency planner, source token sampling, delta threshold and one-token target replay retained",
     "regression_repaired": "Stage C moved ownership registration into FCFS control loop; StorageAware override now participates",
     "inherited_gap": "No transparent active-request continuation in vLLM; do not accept abort/cancel as resume_generate",
-    "gpu_execution": "Not performed for D1; requires exact additional resource approval"
+    "gpu_execution": "Approved soft lock GPU 0,1 on inspur-gpu-12; first batch UUID representation assertion failed, second passed13checks; both independently released, no owned PIDs/apps and0MiB",
+    "tested_executable_commit": "54d099e1d9839637b82773e5ddebb13b2d0ae94a",
+    "runtime_evidence": "evidence-index.json#stage_d1_runtime_qualification"
   }
 }

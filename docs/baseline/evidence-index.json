@@ -438,7 +438,7 @@
     "acceptance_boundary": "One-host private two-node Ray cluster, one Qwen3-0.6B model, BF16/TP1/eager. Does not qualify original migration, TP2, graph, multi-model isolation, embedding GPU, other models, performance or final serving image."
   },
   "stage_d1_cpu_candidate": {
-    "status": "CPU candidate verified; GPU migration qualification and D1 stage review pending",
+    "status": "CPU candidate and bounded runtime checks passed; user stage review pending; transparent continuation remains unimplemented",
     "source_base_commit": "99acc291e050230452cd83ddb5bf0fb74b522c69",
     "cpu": {
       "result": "356 passed",
@@ -468,5 +468,166 @@
     "preserved_limit": "Original delta threshold and token replay retained; no vLLM resume_generate or transparent continuation; TP2 remains separate",
     "gpu_usage": "No D1 GPU execution; exact two-GPU approval required",
     "evidence_location": "External engine-upgrade-20261022/stageD1; personal research vault D1 migration audit note"
+  },
+  "stage_d1_runtime_qualification": {
+    "status": "13 bounded D1 runtime checks passed; transparent continuation remains unimplemented; user stage review pending",
+    "executable_commit": "54d099e1d9839637b82773e5ddebb13b2d0ae94a",
+    "batch": "20261022-130523",
+    "server": "inspur-gpu-12",
+    "physical_gpu_indices": [
+      0,
+      1
+    ],
+    "lock_mode": "soft",
+    "model": "Qwen/Qwen3-0.6B",
+    "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+    "dtype": "bfloat16",
+    "tensor_parallel_size": 1,
+    "enforce_eager": true,
+    "max_model_len": 512,
+    "max_num_seqs": 4,
+    "max_num_batched_tokens": 512,
+    "kv_cache_memory_bytes": 268435456,
+    "seed": 0,
+    "enable_prefix_caching": true,
+    "topology": "One host, private loopback-only namespace, control 4 CPU and two distinct worker nodes with 2 CPU/1 GPU each",
+    "worker_mapping": [
+      {
+        "node_id": "a8f07646c1724d3abe4787ad78431c8c27b1a173a5b1905a6bb0f17c",
+        "visible_devices": "GPU-5b3578d9-81fc-d58e-966d-6492adb4e0bb",
+        "cuda_uuid": "5b3578d9-81fc-d58e-966d-6492adb4e0bb",
+        "tmpdir": "/tmp/sd1-20261022-130523/worker-0",
+        "logical_worker": 0,
+        "physical_gpu_index": 0
+      },
+      {
+        "node_id": "dd29a0a0642072b12582b370f54579bf505d78f407f18914ea55b9a2",
+        "visible_devices": "GPU-c54fa7f6-100a-e15a-9a2e-df2dcc242523",
+        "cuda_uuid": "c54fa7f6-100a-e15a-9a2e-df2dcc242523",
+        "tmpdir": "/tmp/sd1-20261022-130523/worker-1",
+        "logical_worker": 1,
+        "physical_gpu_index": 1
+      }
+    ],
+    "wheel_sha256": "3d83780758a9f91f0127bf746d24eab619a40fa4fdcd53ce44c74605d84b4569",
+    "artifact_manifest_sha256": "c6219429ad0a3912a178708a55ed1ea5789eba5b246d2f1db0f5e1a8a259dee1",
+    "checks": {
+      "private_store": true,
+      "worker_mapping": true,
+      "http_baseline": true,
+      "scheduler_trigger": true,
+      "atomic_publication": true,
+      "active_source_exact_replay": true,
+      "target_history": true,
+      "source_cleanup": true,
+      "fresh_http_equal": true,
+      "target_prefix_cache_hit": true,
+      "init_failure_rollback": true,
+      "replay_failure_rollback": true,
+      "controller_shutdown": true
+    },
+    "scheduler_trigger": {
+      "probe": "qualification-zero-weight-gpu-stage-d1-20261022-130523",
+      "source_node": "1",
+      "weight": 0,
+      "synthetic_metadata_only": true
+    },
+    "migration": {
+      "source_node": "1",
+      "target_node": "0",
+      "paired_replay_iterations": 1,
+      "source_snapshot_sequence_lengths": [
+        436,
+        338,
+        214
+      ],
+      "target_history_sequences": 3,
+      "target_replay_output_tokens_per_sequence": 1,
+      "final_delta_replayed": false
+    },
+    "target_prefix_cache": {
+      "pid": 2424357,
+      "before": {
+        "queries": 993.0,
+        "hits": 544.0
+      },
+      "after": {
+        "queries": 1429.0,
+        "hits": 976.0
+      },
+      "delta": {
+        "queries": 436.0,
+        "hits": 432.0
+      }
+    },
+    "request_terminals": {
+      "ledger_scope": "Same list also accumulates later fault-case pump terminals; not 74 simultaneous requests",
+      "total": 74,
+      "length": 69,
+      "abort": 3,
+      "admission_error": 2,
+      "admission_error_body": "Engine is not running",
+      "abort_completion_tokens": [
+        347,
+        249,
+        125
+      ],
+      "transparent_continuation": false
+    },
+    "reference": {
+      "raw_prompt": "The capital of France is",
+      "text": " Paris. The capital of France is also",
+      "usage": {
+        "prompt_tokens": 5,
+        "completion_tokens": 8,
+        "total_tokens": 13
+      },
+      "fresh_http_choices_and_usage_equal": true
+    },
+    "init_failure": {
+      "actor_pid": 2425088,
+      "kv_cache_memory_bytes": 1,
+      "marker": "No available memory for the cache blocks",
+      "actor_new_log": "/tmp/sd1-20261022-130523/ray/session_latest/logs/worker-3f44150015e70283b33381944215b6b2dcf2a523a5ae59601dfe854b-01000000-2425088.err",
+      "resource_boundary": {
+        "ray_free_gpu": 1.0,
+        "target_memory_mib": 429
+      }
+    },
+    "replay_failure": {
+      "actor_pid": 2425852,
+      "max_model_len": 16,
+      "actual_replay_prompt_tokens": 448,
+      "reason": "Actual vLLM maximum context length rejection propagated through resume_kv_cache",
+      "resource_boundary": {
+        "ray_free_gpu": 1.0,
+        "target_memory_mib": 429
+      }
+    },
+    "cleanup_completed": true,
+    "cleanup_errors": [],
+    "unit_runtime_seconds": 269.609,
+    "qualification_seconds": 267.868581533432,
+    "sample_count": 80,
+    "sampled_gpu_peak_mib": {
+      "0": 2415,
+      "1": 2415
+    },
+    "sampled_cgroup_memory_peak_bytes": 14422491136,
+    "release": "soft unlock GPU 0,1; inactive/dead unit, no owned PIDs, no compute applications, both GPUs 0 MiB",
+    "platform_reservation": "Task workloads released only; no platform reservation cancellation requested",
+    "ci": "https://github.com/wyx-1236/ServerlessLLM/actions/runs/39783768472",
+    "evidence_archive": "stage-d1-evidence-20261022-130523.tgz",
+    "evidence_archive_bytes": 222633,
+    "evidence_archive_sha256": "3327ae67b88d4f0e5debd1b2ca68f3c67aac43bbd83730b9a68bd4d9bf8f1fc3",
+    "evidence_location": "External engine-upgrade-20261022/stageD1; local/server archive hash verified",
+    "failed_batch": {
+      "batch": "20261022-130131",
+      "commit": "2cb0105101c3fab3e5c4ca4da83375e884304f53",
+      "cause": "Torch bare UUID vs approved GPU-prefixed UUID representation; fixed strict normalization in54d099e",
+      "archive_sha256": "a5dfc0c9d9699642de0f52332c15826c0a4f1a142a71f5c5cfb84edac82b9514",
+      "released": true
+    },
+    "acceptance_boundary": "Qualifies repaired original token-replay chain and two rollback cases for one Qwen TP1/eager model on one host. Does not qualify transparent active-request continuation, original-version GPU terminal equivalence, TP2, graph, cross-server migration, other models, performance or final serving image. Full baseline acceptance remains blocked on remaining requirements."
   }
 }

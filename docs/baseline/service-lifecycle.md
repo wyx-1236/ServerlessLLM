@@ -64,7 +64,7 @@ Stage C technical checks and user stage review passed. Original migration,
 TP2, graph mode, multiple models, embedding GPU, performance and the final serving
 image remain unqualified by this batch.
 
-## D1 migration candidate (CPU verified; GPU qualification pending)
+## D1 migration candidate (bounded checks passed; review pending)
 
 The migration candidate uses the parent's canonical ready pool and request
 ledger, accepts Controller's optional LoRA constructor arguments, and joins
@@ -94,3 +94,28 @@ traces, target cache counters, HTTP equality and real initialization/replay
 rollback evidence, followed by cleanup. A zero-weight allocation probe exercises
 the unchanged planner; it does not qualify a second serving model. CPU tests
 of this runner do not establish any of those runtime outcomes.
+
+Commit `54d099e1d9839637b82773e5ddebb13b2d0ae94a` passed all 13 checks in
+batch `20261022-130523`. The actual scheduler moved Qwen3-0.6B from worker 1
+(physical GPU 1) to worker 0 (physical GPU 0), retaining the original planner.
+One paired replay iteration contained three actual sequences of 436, 338 and
+214 tokens; target history recorded identical inputs and one output token each.
+A controlled identical-prefix probe on target actor PID 2424357 observed
+436 additional query tokens and 432 additional hit tokens. This proves reuse
+for that probe, not a general migration hit ratio or performance result.
+
+The target initialization fault used a one-byte KV budget and its own new
+actor log marker. A second target with context length 16 rejected a real
+448-token replay. Both returned target reservations and actor resources while
+retaining source routing and successful fresh HTTP generation. Three source
+requests in the successful move returned `finish_reason=abort`; no transparent
+continuation is claimed. The original version's GPU terminal behavior was not
+re-executed in this batch, so equivalence is not established by source review.
+
+Independent release confirmed no owned PIDs, no compute applications and
+0 MiB on physical GPU 0 and GPU 1. The first D1 attempt's strict UUID comparison
+failed because Torch returned the bare UUID; its evidence is preserved, and
+the passing commit only normalizes valid UUID representation. See
+[runtime evidence](evidence-index.json#stage_d1_runtime_qualification) for
+identities, resource peaks, archive hashes and exclusions. D1 review and full
+baseline acceptance remain pending; TP2 belongs to a separate review gate.

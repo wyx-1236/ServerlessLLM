@@ -9,7 +9,7 @@ serving、CUDA 初始化或模型装载，不授予模型、迁移或性能资�
 | Qwen3.5-9B 文本 | 四组短输入的各自引擎原生/Store 对照一致 | 未验证，不外推多模态、长上下文或迁移 |
 | 后端请求生命周期 | 研究副本观察到 token 跟踪、stop 排空及 shutdown abort | 阶段 C 的 13 项真实运行检查通过：HTTP 服务链、4 个活动后端请求、取消、stop/shutdown、重启、Worker 故障和初始化失败后的显式清理重建；不代表自动故障迁移 |
 | Store 原生 writer/reader | 曾有截断产物，后续研究使用 CPU 参考 writer | 原生 writer 完成与 reader 逻辑尾块对齐已修复；57 项 writer、25 项 reader CPU 测试、服务器真实 ext4 故障文件对照通过；两个扩展已重编译，真实 native Store 恢复通过；不以 CPU writer 替代原生路径 |
-| 原版迁移调用链 | 固定 prompt 恢复调用返回，不是源活动快照接续 | 未验证；原版 vLLM 缺少 Router 接续分支所需 resume_generate |
+| 原版迁移调用链 | 固定 prompt 恢复调用返回，不是源活动快照接续 | D1 在54d099e通过真实双卡目标加载、源快照重放、缓存命中、路由切换、源释放及两类回滚；3个源活动请求终态为abort，仍无resume_generate/透明续写资格；等待阶段审查 |
 | TP2、图、多模型、encode | 没有由阶段 0 增加的直接运行证据 | 未验证，按组合分别准入 |
 | 安装与 ABI | 研究环境不是本 Fork 的完整依赖资格 | Linux 依赖已锁定；CPU HTTP→Ray actor 边界已验；Qwen3 准备链的 Python 3.12.13/Torch 2.13.0+cu130/vLLM 0.31.0/native Store ABI 已验；完整 serving 镜像尚未构建 |
 | 配置与导入 | 旧包会在导入时强制载入其他后端 | 无执行依赖的配置投影与准备链真实引擎构造已验；限定 Qwen3 服务配置和生命周期已在阶段 C 验证 |
