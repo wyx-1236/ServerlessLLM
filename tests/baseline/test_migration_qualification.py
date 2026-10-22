@@ -18,6 +18,44 @@ qualification = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(qualification)
 
 
+@pytest.mark.parametrize("prefix", ["", "GPU-"])
+def test_cuda_uuid_normalizes_only_valid_uuid_representation(prefix):
+    bare = "5b3578d9-81fc-d58e-966d-6492adb4e0bb"
+    assert qualification.canonical_gpu_uuid(prefix + bare) == "GPU-" + bare
+    assert (
+        qualification.canonical_gpu_uuid(prefix + bare.upper()) == "GPU-" + bare
+    )
+
+
+def test_cuda_uuid_does_not_match_a_different_approved_device():
+    observed = "5b3578d9-81fc-d58e-966d-6492adb4e0bb"
+    wrong = "GPU-5b3578d9-81fc-d58e-966d-6492adb4e0bc"
+    assert qualification.canonical_gpu_uuid(
+        observed
+    ) != qualification.canonical_gpu_uuid(wrong)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        0,
+        "",
+        "0",
+        "GPU-",
+        "gpu-5b3578d9-81fc-d58e-966d-6492adb4e0bb",
+        "GPU-GPU-5b3578d9-81fc-d58e-966d-6492adb4e0bb",
+        " 5b3578d9-81fc-d58e-966d-6492adb4e0bb",
+        "5b3578d9-81fc-d58e-966d-6492adb4e0bb\n",
+        "5b3578d9-81fc-d58e-966d-6492adb4e0bg",
+        "5b3578d981fcd58e966d6492adb4e0bb",
+    ],
+)
+def test_cuda_uuid_rejects_malformed_identifiers(value):
+    with pytest.raises(ValueError):
+        qualification.canonical_gpu_uuid(value)
+
+
 @pytest.fixture
 def approval(tmp_path):
     artifact = tmp_path / "store" / "vllm" / "Qwen3-0.6B-stageB"

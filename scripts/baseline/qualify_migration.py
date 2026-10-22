@@ -352,6 +352,15 @@ def backend_history(actor):
     ]
 
 
+def canonical_gpu_uuid(value):
+    """Normalize Torch's bare UUID while rejecting malformed identifiers."""
+    if not isinstance(value, str) or not re.fullmatch(
+        r"(?:GPU-)?[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", value
+    ):
+        raise ValueError("Invalid physical GPU UUID")
+    return "GPU-" + value.removeprefix("GPU-").lower()
+
+
 def worker_mapping():
     import ray
     import torch
@@ -956,10 +965,9 @@ async def qualify(config, output, result):
                 )
                 .remote()
             )
-            assert (
-                observed["visible_devices"] == uuid
-                and observed["cuda_uuid"] == uuid
-            ), observed
+            assert observed["visible_devices"] == uuid and canonical_gpu_uuid(
+                observed["cuda_uuid"]
+            ) == canonical_gpu_uuid(uuid), observed
             assert observed["tmpdir"] == environments[index]["TMPDIR"], observed
             observed.update(
                 logical_worker=index,
