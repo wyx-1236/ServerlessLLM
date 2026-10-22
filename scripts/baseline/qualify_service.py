@@ -106,8 +106,10 @@ async def qualify(config, output):
             object_store_memory=80 * 1024**2,
             node_ip_address="127.0.0.2",
         )
+        # Controller, StoreManager, scheduler and router each reserve one CPU
+        # on the control node. Worker CPUs cannot satisfy control_node demand.
         cluster.add_node(
-            num_cpus=3,
+            num_cpus=4,
             num_gpus=0,
             resources={"control_node": 1},
             temp_dir=str(ray_root / "ray"),
