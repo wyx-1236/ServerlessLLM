@@ -7,6 +7,19 @@ batch. Full baseline acceptance must not treat those requests as continued.
 
 ## Scope and invariants
 
+The user's binding requirement is no regression in the original ServerlessLLM
+project's functions or rules. Preserving functionality is not an optional
+scope choice. Establish compatibility against the fixed upstream project's
+specifications, externally promised behavior, code and tests; distinguish
+inherited implementation gaps from upgrade regressions without weakening
+acceptance. Shared Router/Scheduler/Store changes require regression coverage
+for affected existing paths, not only the new vLLM qualification cases.
+
+Restricted early batches stage evidence collection; they do not reduce final
+functional requirements. Marking a previously supported capability unsupported
+or unverified does not satisfy the upgrade. This requirement clarification does
+not approve the proposed handoff implementation or authorize a GPU run.
+
 Retain the existing scheduler objective, target loading through native Store,
 iterative source token sampling and one-token target prefix replay. Add an
 explicit final request handoff within that mechanism; do not introduce direct
