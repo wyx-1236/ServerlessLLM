@@ -86,5 +86,13 @@
     "gpu_execution": "Approved soft lock GPU 0,1 on inspur-gpu-12; first batch UUID representation assertion failed, second passed13checks; both independently released, no owned PIDs/apps and0MiB",
     "tested_executable_commit": "54d099e1d9839637b82773e5ddebb13b2d0ae94a",
     "runtime_evidence": "evidence-index.json#stage_d1_runtime_qualification"
+  },
+  "original_function_audit_20261023": {
+    "upstream_commit": "9f50241baa5386e06a9321c51f19a9ef5f964c2b",
+    "audited_candidate_commit": "722160025ab0131bd865502cb9cfd5e6b9959430",
+    "document": "original-function-audit.md",
+    "revised_proposal": "migration-continuation-proposal.md",
+    "status": "Read-only functional audit and proposal revision, pending user review; production unchanged",
+    "evidence": "evidence-index.json#original_function_audit_20261023"
   }
 }

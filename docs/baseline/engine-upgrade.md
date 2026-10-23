@@ -28,6 +28,12 @@
 未完成状态；不得仅将其标为 unsupported/unverified 后宣称整个升级已经完成。
 续写兼容提案的具体实现仍须审查，本约束不代表批准该实现或授予新 GPU 使用权限。
 
+2026-10-23 的[原版功能核查](original-function-audit.md)确认：项目文档有零停机迁移
+与目标请求恢复的功能意图，官方示例采用 Transformers；固定旧 vLLM 则缺少接续方法。
+[修订兼容方案](migration-continuation-proposal.md)保留 Transformers 原协议，为 vLLM
+提出内部适配，并将 Store CLI、旧参数、调试视图和共享依赖回归一并列为兼容关卡。
+这些是待审查的修复目标，不是已经完成的兼容性声明。
+
 本设计拥有独立 SLLM-vLLM 升级；不修改 CrossPool 的生产支持边界。
 共同评测遵循本文末尾的“共同评测接口摘要”，不得将历史 Transformers 结果当作
 旧 vLLM 回归数据。本任务明确推进 vLLM，不以保持旧环境或改用其他引擎为目标。

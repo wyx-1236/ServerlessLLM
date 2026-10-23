@@ -11,8 +11,11 @@ Neither profile requests a GPU.
   validation or model qualification.
 - `test_import_boundary.py` blocks execution-dependency imports in a fresh
   interpreter, protecting the configuration-only boundary.
-- `test_legacy_contract.py` exercises the original backend
-  with unavoidable engine doubles. Tests named `original` or `incomplete`
+- `test_legacy_contract.py` imports the current checkout's backend and checks
+  preserved or repaired legacy contracts with engine doubles. The fixture name
+  `legacy` does not mean it executes the immutable upstream source. A genuine
+  old/new comparison must identify and extract the fixed Git objects separately.
+  Tests named `original` or `incomplete`
   characterize inherited defects; their passing is not evidence of correctness.
   When those components are fixed, replace the defect observations with the
   intended behavior assertions and preserve the historical evidence externally.

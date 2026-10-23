@@ -16,6 +16,11 @@ serving、CUDA 初始化或模型装载，不授予模型、迁移或性能资�
 
 资格来自明确 commit、依赖、模型 revision、dtype、TP、上下文和执行方式的
 直接测试。CPU 旧行为用例特意暴露继承缺陷，不能把其通过解释为该缺陷已修复。
+
+2026-10-23 [原版核查](original-function-audit.md)补充阻断项：项目官方迁移示例的
+Transformers 接续及其新版依赖尚未实机回归；Store CLI 导出仍依赖旧 patch；
+pattern/max_size 参数接受行为与 trace_debug 完成历史视图存在差异。26 项冻结源码
+CPU 对照和 69 项当前 focused 回归不能消除这些完整兼容缺口；方案修订仍待审查。
 不能因上游存在代码或历史探针通过而标记为当前 Fork 支持。
 工程验证与原始研究归档来源见 [provenance](provenance.json) 和
 [evidence-index](evidence-index.json)。

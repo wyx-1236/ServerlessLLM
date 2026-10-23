@@ -9,6 +9,8 @@
 - [来源清单](provenance.json)：原始提交、分支和候选引擎身份。
 - [历史证据索引](evidence-index.json)：外部归档摘要及适用范围。
 - [契约与补丁审计](patch-audit.md)：继承行为、缺陷与配置映射边界。
+- [原版功能与规范核查](original-function-audit.md)：项目承诺、两个后端的迁移续写差异及全项目兼容缺口。
+- [迁移续写兼容方案](migration-continuation-proposal.md)：原版核查后的修订候选，保持既有功能，等待用户审查。
 - [Linux 环境](environment.md)：依赖锁、CPU 检查及候选镜像配方。
 - [服务生命周期](service-lifecycle.md)：后端/控制面所有权、关闭和手动限定验证入口。
 - [迁移生命周期执行计划](migration-lifecycle-plan.md)：D1 原版调用链和资源回收的 scoped delta；不是已验证迁移资格。

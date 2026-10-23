@@ -1,96 +1,128 @@
-# Proposed vLLM active-request continuation compatibility
+# vLLM 迁移续写兼容方案（原版功能核查后修订）
 
-Status: proposal for user review after the bounded D1 report. Not implemented,
-accepted architecture, or GPU-qualified behavior. The original migration-chain
-checks passed, but three active source requests ended with `abort` in the real
-batch. Full baseline acceptance must not treat those requests as continued.
+状态：2026-10-23 修订，待用户审查；尚未实现、尚未获得续写资格。此前方案由本版
+替代作为下一次设计审查的输入。原项目功能与规范不退化是硬约束，不是可选范围。
+本方案不批准实施或 GPU 使用，TP2 仍有独立关卡。
 
-## Scope and invariants
+## 原版依据与必须保留的行为
 
-The user's binding requirement is no regression in the original ServerlessLLM
-project's functions or rules. Preserving functionality is not an optional
-scope choice. Establish compatibility against the fixed upstream project's
-specifications, externally promised behavior, code and tests; distinguish
-inherited implementation gaps from upgrade regressions without weakening
-acceptance. Shared Router/Scheduler/Store changes require regression coverage
-for affected existing paths, not only the new vLLM qualification cases.
+[原版功能核查](original-function-audit.md)固定对照上游 `9f50241` 与候选 `7221600`。
+项目声明零停机迁移，官方示例使用 Transformers：源返回
+`preempted/current_output/completed_tokens`，Router 扣除已完成预算，再调用目标
+`resume_generate(request_data, current_output)`。这个路径必须保持，不能因 vLLM
+适配而改动 Transformers 的信封、chat template、LoRA、embedding 或普通 shutdown。
+原抽象基类并未要求 resume_generate，不给所有后端增加新的必选抽象方法。
 
-Restricted early batches stage evidence collection; they do not reduce final
-functional requirements. Marking a previously supported capability unsupported
-or unverified does not satisfy the upgrade. This requirement clarification does
-not approve the proposed handoff implementation or authorize a GPU run.
+旧 vLLM 缺少上述接续方法；原项目的功能承诺不因此失效。新版 D1 的 token 重放、
+缓存、切换和回滚虽通过，3 个源请求仍 abort，尚不满足完整迁移契约。原版自身有
+实例池/构造参数等可运行性缺陷，Transformers 也有预热 token 进入输出的预算风险。
+保留功能不等于保留缺陷；修复必须显式记录并按项目契约验收。
 
-Retain the existing scheduler objective, target loading through native Store,
-iterative source token sampling and one-token target prefix replay. Add an
-explicit final request handoff within that mechanism; do not introduce direct
-KV transfer, a KV connector, or a replacement scheduler. Keep TP2 separate.
+## 路线比较与选择
 
-The compatibility path must preserve request identity, output-token budget,
-model/tokenizer identity, stop semantics, final text and usage. It must own each
-request and instance reservation exactly once. A replay/cache hit alone is
-never evidence that these requirements hold.
+| 路线 | 做法与影响面 | 决策 |
+| --- | --- | --- |
+| 后端内部适配、最小共享改动 | 保留 Transformers 既有协议，为 vLLM 加内部最终快照与接续适配；共享 Router 仅增加明确的协议分派和所有权转交 | 推荐，回归影响面较小，能分别核查两条路径 |
+| 所有后端统一新交接协议 | 重构抽象基类、Transformers、vLLM、Dummy 与 Router，让它们共同采用新信封 | 可另行设计，但本轮不采用：改动面远超本次引擎升级，现有证据不足 |
 
-## Proposed ownership protocol
+继续原 storage-aware 延迟规划、placement、目标 native Store 加载和迭代 token
+预热，不增加 KV connector、共享 KV 服务或替代调度算法。最终交接只补齐已有
+请求接续环节，不以最终全量重算替换整个原迁移预热流程。
 
-1. Prepare the target while the source continues serving, using the original
-   warmup loop. Do not publish the target at this point.
-2. Enter an explicit source handoff state: close new admission, mark each
-   admitted request with a migration generation, abort/join its engine iterator,
-   and capture its final observed output. Joining is necessary because sampling
-   before abort can miss tokens subsequently returned by the iterator. Retain
-   the original request RPC until continuation is settled.
-3. Build an immutable, versioned per-request envelope containing request ID,
-   source instance/generation, model/tokenizer revision, original prompt token
-   IDs, committed generated token IDs, original sampling/stop configuration,
-   original output budget, visible-output trimming metadata, and natural versus
-   internal-abort terminal state. Do not pass live engine output objects as the
-   cross-instance ownership contract.
-4. Replay the final frozen token sequences on the target. Naturally completed
-   source requests return their original result and are not resumed. For an
-   unfinished request, remaining output budget is original `max_tokens` minus
-   committed generated tokens. A zero remaining budget finalizes without another
-   generation. The target receives the original request ID and handoff generation
-   so repeated handoff delivery cannot generate or charge twice.
-5. Publish the route and transfer pending request ownership only after final
-   replay succeeds. Router's vLLM continuation branch calls a new backend
-   `resume_generate` compatibility method using the envelope. Decode and merge
-   token outputs with the original tokenizer; usage charges the original prompt
-   once and the total committed completion tokens once. The replay's one-token
-   warmup output is not user output or billed completion.
-6. Retire the source after ownership transfer. Before transfer, target failure
-   must leave a source-owned recoverable envelope rather than lose a request;
-   source engine restart/replay may be required after it has been quiesced.
-   After transfer, source cleanup errors must not roll back the live target.
-   Cancellation and close settle the unique owner and return all slots/counts.
+## 外部契约保持与内部协议边界
 
-## Semantic constraints requiring explicit qualification
+- HTTP endpoint、请求有效字段、模型注册/更新/删除、响应 schema、usage 及非流式
+  调用方式保持；用户不需要重发请求，也不接触内部 preempted 信封。
+- vLLM 保持 `input_tokens > prompt > messages` 优先级与原 role/content 拼接方式，
+  不套用 Transformers 的 chat template。响应多 choices、logprobs、模型标识和
+  request ID 的既有语义保持；不能因首批实验为 n=1 而在交付时删掉原多候选请求。
+- 原 stop 仍排空，普通 shutdown/管理删除/用户取消仍按原强制终止语义处理。新增
+  迁移专用内部入口，不能让普通取消触发自动续写。
+- 既有 enable-migration、migration_delta、placement、自动伸缩参数不改变含义。
+  不增加一个默认关闭的外部开关来掩盖原项目应保留的迁移功能。
+- Transformers 继续使用原信封；vLLM 的版本化信封只在明确的后端内部协议中使用，
+  不能通过随意 hasattr 或要求所有后端升级接口来替代明确分派。
 
-Replaying generated tokens as target prompt tokens does not automatically
-preserve sampling semantics: random-number state, presence/frequency/repetition
-penalties, minimum-token accounting, EOS and stop strings can depend on prior
-generation. Stop strings may cross the handoff boundary, and visible text may
-exclude tokens that still count toward the engine budget. These cases need an
-explicit adapter or a capability restriction; merely forwarding SamplingParams
-does not establish equivalence.
+## 拟定交接流程与请求所有权
 
-The first proposed qualification batch uses deterministic greedy generation,
-neutral penalties and a finite output budget, then tests natural EOS, token
-stops, boundary-spanning string stops, zero remaining budget, cancellation and
-both sides of the transfer failure boundary. Each semantic capability receives
-its own admission/result entry. Unsupported active-request semantics must keep
-the original source request owned and prevent committing its handoff; they
-cannot silently produce an altered request or be counted as passed. A policy
-for unsupported requests is part of the reviewed implementation delta, not an
-implicit change to the latency planner.
+1. **准备目标**：源继续处理已接收请求，目标按原算法加载、采集和预热。源仍是
+   用户请求的唯一负责方；此时不发布目标。
+2. **最终冻结**：Router 暂停把新请求发往源并保持排队语义。vLLM 迁移专用入口标记
+   迁移代次，只中止并等待相关生成迭代器结束，不提前销毁源 engine 或归还源 GPU。
+   取得迭代器最终已提交输出，内部暂停不得作为用户可见的 abort 返回。
+3. **形成最终信封**：按 request ID 和 choice index 保存不可变记录，包含源实例/
+   迁移代次、模型/tokenizer 身份、原 prompt token IDs、各候选已提交的生成 token、
+   实际生效的采样参数和原输出预算、EOS/stop 状态、可见文本裁剪和必要 logprobs。
+   不能用列表顺序或 live engine 输出对象作为跨实例身份契约。即使请求没有显式
+   max_tokens，也应使用准入时解析的实际预算。
+4. **最终同步**：目标重放最终冻结序列，确认请求可恢复。自然完成的请求返回已有
+   结果，不再生成；预算为零直接完成。预热产生的额外 token 不加入用户序列。
+5. **提交转交**：最终重放成功后，在 Router 的同一提交边界更新目标 ready pool、
+   migration_record 和请求负责方。请求计数/slot 的 source→target 转移必须只记一次；
+   原请求的最终回调不能再释放已转交的 slot。记录迁移代次，重复交接不能重复生成。
+   此后才关闭源 engine、kill 源 actor 并归还源实例预留。
+6. **同一请求续写**：目标适配方法完成各候选剩余生成，使用原 tokenizer 按 token
+   语义合并，原 HTTP/Ray 请求只得到一份最终响应。目标的 engine 内部请求标识可以
+   含迁移代次，但对外 vLLM request ID 不因此改变。
 
-## Required evidence and next gate
+源实例预留转交与请求 slot 转交是两类账本，必须分别验证。不能以实例 GPU
+归还成功证明用户请求的负责关系也正确。
 
-CPU tests must prove immutable final snapshots, no missing/duplicate tokens,
-budget/usage/stop handling, idempotency, rollback ownership and cancellation.
-A separately approved two-GPU batch must compare a no-migration reference with
-the migrated request's complete output token IDs, finish reason and usage,
-while proving actual source/target device identity, final replay/cache evidence
-and release. Timing and stochastic equivalence remain unqualified until tested.
+## 预算、停止条件与采样语义
 
-Review this proposal before implementation. Do not promote D1's bounded
-original-chain result to transparent continuation or final baseline release.
+每个候选的剩余输出预算为原有效预算减去该候选已提交的生成 token 数。prompt
+在 usage 中计一次，各候选 completion 按原 vLLM 聚合规则计算。预热的单 token
+不属于用户输出。EOS/stop 造成的隐藏 token 与可见裁剪分别记录，不用文本字符数
+推算预算，不用原 Transformers 的“目标预热序列更长就替换源结果”分支。
+
+冻结后自然 EOS、stop token、跨交接边界的 stop 字符串、min_tokens、penalties、
+多候选和 logprobs 都必须有专门的适配/回归项。不能只把原 SamplingParams
+转发给“prompt + 已生成 token”的新请求就声称语义保持，因为输出历史可能被
+重新解释成 prompt；随机数状态也未因此恢复。
+
+首批 CPU/GPU 用例可从贪心、单候选、无惩罚开始以定位问题，但它们是执行顺序，
+不是最终能力边界。对原来有效、尚未证明可恢复的请求，不得提交会改变含义的
+交接或悄悄返回 abort；当前开发版本应让源保留请求、在关闭源之前使本次迁移
+失败并按既有失败回滚，且整体验收继续阻断。不能把该保护措施包装为最终支持。
+原版未承诺随机生成与“不迁移对照”逐 token 恒等，报告需区分参数语义、统计性
+行为与确定性 token 对照；没有证据时不作随机等价声明。
+
+## 失败、取消与源 engine 的保留
+
+- **最终冻结前目标失败**：清理目标及其预留，源继续原请求，原路由不变。
+- **源冻结后、转交前目标失败**：源 engine 和 GPU 预留仍保留，由源使用最终信封
+  完成剩余生成，原用户请求继续由源负责；请求对用户不得变成内部暂停错误。
+  必须先证明此恢复路径，才能启用最终冻结。若源本身发生不可恢复引擎故障，按
+  明确的错误和清理契约处理，不冒称原项目已提供任意节点崩溃下的透明容错。
+- **转交后源清理失败**：目标继续负责请求；源清理问题单独报告，不能撤销正常目标。
+- **用户取消/系统关闭**：结算当前唯一负责方，取消待交接及目标生成，归还所有
+  slot/count、actor 与资源预留；不能因自动重试把用户已取消的请求复活。
+
+## 先闭合的非续写兼容差异
+
+| 已定位问题 | 修订要求与验证方向 |
+| --- | --- |
+| Store CLI/export example 仍用旧 patch | 保持原 console script 和参数，将公开导出入口与主包统一接到已验证的准备/插件边界，保留 CLI > 环境变量 > 默认路径优先级；先用 CPU 边界替身验证再获批 GPU 实测 |
+| pattern/max_size 从接受变为拒绝 | 恢复旧调用可达性，明确原 patch 实际忽略这两个参数；不声称旧实现了过滤/分片，也不默默赋予新语义或删参数 |
+| trace_debug 历史/活动语义改变 | 活动迁移视图必须纯活动，保留完成历史的诊断意图；核对调用方并设计兼容历史访问/告知方式，旧测试与 ongoing 文档冲突需显式记录，不能虚称无差异 |
+| 共享依赖/其他后端未回归 | 验证锁定依赖下原 Transformers 缓存/streamer、LoRA、微调、embedding 和 Store；若不兼容，提出最小适配或兼容依赖隔离并审查，不以单文件未改为通过 |
+| 原示例与固定源码漂移 | 核对构造参数、实例池及必需配置，保留官方双模型场景；修复示例/兼容映射，不能用零权重 fixture 代替最终双模型资格 |
+| 旧产物与部署入口 | 明确旧产物检测及转换/兼容方式，避免覆盖旧数据；完整部署、镜像和受影响平台另有回归证据后才认领 |
+
+## 审查后的验证顺序与发布门槛
+
+1. 建立“原项目契约→原源码/测试→新版适配→CPU证据→实机证据”矩阵，先补齐上述
+   入口、参数、诊断和依赖差异的实施设计。不需要负责人再次决定是否保留功能。
+2. CPU 验证原 Transformers 既有抢占/接续协议、无迁移正常路径及新 vLLM 交接的
+   最终快照、token/预算/usage/停止条件、多候选、幂等、回滚和取消。纯替身通过
+   只证明协议，不证明真实 engine 行为。
+3. 单独申请精确服务器/物理 GPU、锁模式和时长。真实验证必须让同一 HTTP 请求
+   在活动生成时迁移并完成，比较完整 token IDs、finish_reason、usage；同时保存
+   最终源快照、目标输入、缓存、原/目标资源回收证据。
+4. 回归官方 Transformers 双模型迁移情形和受影响的 LoRA/微调/embedding/自动伸缩
+   与 Store CLI；D1 零权重 probe 与新 HTTP 成功不能代替这些测试。
+5. 原来有效功能存在未修复退化或缺少必要证据时，不合并正式集成分支、不标记完整
+   兼容、不发布完成版。阶段报告供用户审查后，再推进 TP2 与后续组合。
+
+当前用户只授权核查与方案修订。以上均为待审查目标，不是已实现的能力或新的
+GPU 批准；本轮核查报告提交后停止后续实施，等待审查。

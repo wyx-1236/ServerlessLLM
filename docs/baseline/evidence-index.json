@@ -629,5 +629,50 @@
       "released": true
     },
     "acceptance_boundary": "Qualifies repaired original token-replay chain and two rollback cases for one Qwen TP1/eager model on one host. Does not qualify transparent active-request continuation, original-version GPU terminal equivalence, TP2, graph, cross-server migration, other models, performance or final serving image. Full baseline acceptance remains blocked on remaining requirements."
+  },
+  "original_function_audit_20261023": {
+    "date": "2026-10-23",
+    "status": "Source/CPU audit complete; compatibility revision awaiting user review; no production changes or new GPU use",
+    "upstream_commit": "9f50241baa5386e06a9321c51f19a9ef5f964c2b",
+    "audited_candidate_commit": "722160025ab0131bd865502cb9cfd5e6b9959430",
+    "source_files": 31,
+    "byte_identical_files": 21,
+    "source_manifest_sha256": "c5dea432fae3710fcca58cbed8275f395932989d915b4bed13e71703fdadd2d2",
+    "cpu_comparison": {
+      "result": "26 passed",
+      "elapsed_seconds": 2.41,
+      "xml": "comparison-complete.xml",
+      "method": "Selected actual frozen AST method bodies with CPU doubles; explicit upstream pool alias only to reach deeper Router protocol; not old-engine E2E"
+    },
+    "current_focused": {
+      "result": "69 passed",
+      "elapsed_seconds": 20.23,
+      "xml": "current-focused.xml"
+    },
+    "confirmed_findings": [
+      "Project documents promise zero-downtime migration; official example backend is Transformers",
+      "Original Transformers returns preempted/current_output/completed_tokens and has resume_generate",
+      "Original and candidate VllmBackend lack resume_generate; existing D1 three active aborts do not satisfy project-level continuation intent",
+      "Original target may promote one-token-longer warmup sequence; controlled method counterexample returns5completiontokens for original4budget",
+      "Candidate rejects formerly accepted pattern/max_size; original patch accepted but did not use either argument",
+      "Store CLI export retains old patch entrypoint and has not delegated to new preparation pipeline",
+      "Debug completed-history behavior changed; current legacy tests import current checkout, not frozen upstream",
+      "Shared dependencies and control-plane changes require affected original feature regressions despite unchanged backend files"
+    ],
+    "server_dependency_probe": {
+      "status": "SSH connection timed out",
+      "source_only": true,
+      "gpu_used": false,
+      "consequence": "Installed Transformers/PEFT runtime compatibility not established by this probe"
+    },
+    "gpu_usage": "None; previous D1 release evidence historical only; no current reservation or workload started",
+    "implementation": "Not performed; user review required",
+    "evidence_location": "External engine-upgrade-20261022/stageD1/original-contract-audit-20261023",
+    "scope_exclusions": [
+      "Real original engine/migration run",
+      "Updated dependency real Transformers/LoRA/fine-tuning/embedding validation",
+      "Store CLI GPU export validation",
+      "Complete project compatibility or final acceptance"
+    ]
   }
 }
