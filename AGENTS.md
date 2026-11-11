@@ -6,6 +6,31 @@ This fork owns the independent ServerlessLLM-vLLM baseline. Read
 Do not integrate SLLM components into CrossPool or silently change the original
 baseline's scheduling, request, storage, or migration behavior.
 
+## Incremental implementation reporting
+
+For all vLLM engine-upgrade work, use the sequence: announce one bounded
+change, implement it, run its applicable focused checks, report it in the
+current chat, then proceed to the next bounded change within the approved scope.
+Each change should address one reviewable purpose and its necessary companion
+files/tests; do not accumulate an entire stage before reporting.
+
+Every report must identify the actual checkout and branch, changed files and
+key functions, previous and new behavior, the purpose and effect of the change,
+its plan/stage, checks actually run and their results, remaining limitations,
+and whether the changes are committed. Explain compatibility effects on the
+original ServerlessLLM behavior and the next proposed bounded change. Report
+failures and user-requested corrections before proceeding with unrelated work.
+
+Reporting does not by itself require approval after every small edit. Existing
+stage-review, design-change and GPU approval gates still require explicit user
+approval; a report or silence does not satisfy those gates. If the user requests
+review of a particular change before continuing, wait for that review.
+
+Before editing, verify the checkout path, origin, branch and worktree state.
+Use the user's currently selected Fork checkout for implementation. When it is
+missing already committed upgrade work, inspect and reuse the existing upgrade
+branch rather than reimplementing it or overwriting unrelated local changes.
+
 ## Stage review
 
 Work only within the currently approved stage. After every stage, report the

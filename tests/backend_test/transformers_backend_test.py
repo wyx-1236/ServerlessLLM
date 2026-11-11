@@ -161,12 +161,15 @@ def encoder_tokenizer():
 
 
 def test_generate(transformers_backend, model, tokenizer):
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=model,
-    ), patch(
-        "sllm.backends.transformers_backend.TransformersBackend._tokenize",
-        return_value=tokenizer,
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.TransformersBackend._tokenize",
+            return_value=tokenizer,
+        ),
     ):
         transformers_backend.init_backend()
         input = {
@@ -186,12 +189,15 @@ def test_generate(transformers_backend, model, tokenizer):
 
 
 def test_get_current_tokens(transformers_backend, model, tokenizer):
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=model,
-    ), patch(
-        "sllm.backends.transformers_backend.TransformersBackend._tokenize",
-        return_value=tokenizer,
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.TransformersBackend._tokenize",
+            return_value=tokenizer,
+        ),
     ):
         transformers_backend.init_backend()
         input = {
@@ -223,12 +229,15 @@ def test_get_current_tokens(transformers_backend, model, tokenizer):
 
 
 def test_resume_kv_cache(transformers_backend, model, tokenizer):
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=model,
-    ), patch(
-        "sllm.backends.transformers_backend.TransformersBackend._tokenize",
-        return_value=tokenizer,
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.TransformersBackend._tokenize",
+            return_value=tokenizer,
+        ),
     ):
         transformers_backend.init_backend()
         inputs = transformers_backend._tokenize("")
@@ -237,27 +246,30 @@ def test_resume_kv_cache(transformers_backend, model, tokenizer):
             transformers_backend.resume_kv_cache(intermediate_tokens)
         except Exception as e:
             assert False, f"Failed to resume kv cache: {e}"
-        assert transformers_backend.past_key_values
-        assert (
-            len(transformers_backend.past_key_values)
-            == model.config.num_hidden_layers
-        )
-        assert len(transformers_backend.past_key_values[0]) == 2
-        assert transformers_backend.past_key_values[0][0].shape == (
+        cache = transformers_backend.past_key_values
+        assert cache is not None
+        assert len(cache.layers) == model.config.num_hidden_layers
+        assert cache.get_seq_length() == len(intermediate_tokens[0])
+        expected_shape = (
             len(intermediate_tokens),
             model.config.num_attention_heads,
             len(intermediate_tokens[0]),
             model.config.hidden_size // model.config.num_attention_heads,
         )
+        assert cache.layers[0].keys.shape == expected_shape
+        assert cache.layers[0].values.shape == expected_shape
 
 
 def test_resume_generate(transformers_backend, model, tokenizer):
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=model,
-    ), patch(
-        "sllm.backends.transformers_backend.TransformersBackend._tokenize",
-        return_value=tokenizer,
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.TransformersBackend._tokenize",
+            return_value=tokenizer,
+        ),
     ):
         transformers_backend.init_backend()
         input = {
@@ -286,12 +298,15 @@ def test_resume_generate(transformers_backend, model, tokenizer):
 
 
 def test_shutdown(transformers_backend, model, tokenizer):
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=model,
-    ), patch(
-        "sllm.backends.transformers_backend.TransformersBackend._tokenize",
-        return_value=tokenizer,
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.TransformersBackend._tokenize",
+            return_value=tokenizer,
+        ),
     ):
         transformers_backend.init_backend()
         input = {
@@ -322,12 +337,15 @@ def test_shutdown(transformers_backend, model, tokenizer):
 
 
 def test_encode(encoder_backend, encoder, encoder_tokenizer):
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=encoder,
-    ), patch(
-        "sllm.backends.transformers_backend.TransformersBackend._encoder_tokenize",
-        return_value=encoder_tokenizer,
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=encoder,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.TransformersBackend._encoder_tokenize",
+            return_value=encoder_tokenizer,
+        ),
     ):
         encoder_backend.init_backend()
         input = {
@@ -409,13 +427,16 @@ def mock_peft_model():
 
 def test_load_lora_adapter_success(lora_backend, mock_peft_model):
     """Test successful loading of a LoRA adapter."""
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=mock_peft_model,
-    ), patch(
-        "sllm.backends.transformers_backend.load_lora",
-        return_value=mock_peft_model,
-    ) as mock_load_lora:
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=mock_peft_model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.load_lora",
+            return_value=mock_peft_model,
+        ) as mock_load_lora,
+    ):
         lora_backend.init_backend()
 
         # Simulate successful LoRA loading by updating peft_config
@@ -438,13 +459,16 @@ def test_load_lora_adapter_success(lora_backend, mock_peft_model):
 
 def test_load_lora_adapter_repeated(lora_backend, mock_peft_model):
     """Test that loading the same LoRA adapter multiple times doesn't cause issues."""
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=mock_peft_model,
-    ), patch(
-        "sllm.backends.transformers_backend.load_lora",
-        return_value=mock_peft_model,
-    ) as mock_load_lora:
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=mock_peft_model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.load_lora",
+            return_value=mock_peft_model,
+        ) as mock_load_lora,
+    ):
         lora_backend.init_backend()
 
         # Simulate LoRA already loaded
@@ -466,13 +490,16 @@ def test_load_lora_adapter_repeated(lora_backend, mock_peft_model):
 
 def test_load_multiple_lora_adapters(lora_backend, mock_peft_model):
     """Test loading multiple LoRA adapters."""
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=mock_peft_model,
-    ), patch(
-        "sllm.backends.transformers_backend.load_lora",
-        return_value=mock_peft_model,
-    ) as mock_load_lora:
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=mock_peft_model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.load_lora",
+            return_value=mock_peft_model,
+        ) as mock_load_lora,
+    ):
         lora_backend.init_backend()
 
         # Simulate successful LoRA loading by updating peft_config
@@ -500,15 +527,19 @@ def test_load_multiple_lora_adapters(lora_backend, mock_peft_model):
 
 def test_generate_with_lora_adapter(lora_backend, mock_peft_model):
     """Test generation with a loaded LoRA adapter."""
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=mock_peft_model,
-    ), patch(
-        "sllm.backends.transformers_backend.load_lora",
-        return_value=mock_peft_model,
-    ), patch(
-        "sllm.backends.transformers_backend.TransformersBackend._tokenize"
-    ) as mock_tokenize:
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=mock_peft_model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.load_lora",
+            return_value=mock_peft_model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.TransformersBackend._tokenize"
+        ) as mock_tokenize,
+    ):
         lora_backend.init_backend()
 
         # Setup tokenizer mock
@@ -584,12 +615,15 @@ def test_generate_with_unloaded_lora_adapter(lora_backend, mock_peft_model):
 
 def test_generate_base_model_without_lora(lora_backend, mock_peft_model):
     """Test generation with base model (no LoRA adapter specified)."""
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=mock_peft_model,
-    ), patch(
-        "sllm.backends.transformers_backend.TransformersBackend._tokenize"
-    ) as mock_tokenize:
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=mock_peft_model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.TransformersBackend._tokenize"
+        ) as mock_tokenize,
+    ):
         lora_backend.init_backend()
 
         # Setup tokenizer mock
@@ -679,15 +713,19 @@ def test_load_lora_adapter_uninitialized_backend():
 
 def test_generate_with_different_lora_adapters(lora_backend, mock_peft_model):
     """Test generation with different LoRA adapters."""
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=mock_peft_model,
-    ), patch(
-        "sllm.backends.transformers_backend.load_lora",
-        return_value=mock_peft_model,
-    ), patch(
-        "sllm.backends.transformers_backend.TransformersBackend._tokenize"
-    ) as mock_tokenize:
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=mock_peft_model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.load_lora",
+            return_value=mock_peft_model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.TransformersBackend._tokenize"
+        ) as mock_tokenize,
+    ):
         lora_backend.init_backend()
 
         # Setup tokenizer mock
@@ -757,15 +795,19 @@ def test_lora_adapter_persistence_across_generations(
     lora_backend, mock_peft_model
 ):
     """Test that LoRA adapter remains loaded across multiple generations."""
-    with patch(
-        "sllm.backends.transformers_backend.load_model",
-        return_value=mock_peft_model,
-    ), patch(
-        "sllm.backends.transformers_backend.load_lora",
-        return_value=mock_peft_model,
-    ), patch(
-        "sllm.backends.transformers_backend.TransformersBackend._tokenize"
-    ) as mock_tokenize:
+    with (
+        patch(
+            "sllm.backends.transformers_backend.load_model",
+            return_value=mock_peft_model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.load_lora",
+            return_value=mock_peft_model,
+        ),
+        patch(
+            "sllm.backends.transformers_backend.TransformersBackend._tokenize"
+        ) as mock_tokenize,
+    ):
         lora_backend.init_backend()
 
         # Setup tokenizer mock

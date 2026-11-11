@@ -1,0 +1,4 @@
+# Additional dependency for the light CPU profile's pinned-source checks.
+# Version and Linux CPython 3.12 wheel hash copied from the serving uv.lock.
+msgspec==0.22.0 \
+    --hash=sha256:99c401861c5bb3a57f7d6423ea7ed4352cd57aa3f04f4fbe9f3e3e4564a10f08

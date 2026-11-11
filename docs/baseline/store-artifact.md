@@ -97,6 +97,70 @@ errors fail the chunk. CPU reader tests do not qualify CUDA IPC or engine restor
 
 ## Preparation entry and ownership
 
+### Public Store export commands
+
+`sllm-store save --backend vllm` and
+`python sllm_store/examples/save_vllm_model.py` delegate through
+`sllm_store.vllm_export.export_vllm_model` to the same preparation pipeline.
+The preparation supervisor and Worker are owned by `sllm_store.vllm_preparation`
+and `sllm_store.vllm_prepare_worker`. Store export uses these modules directly.
+Standalone use requires the Store vLLM extra and the pinned Linux/native runtime.
+The original `sllm.vllm_preparation` and `sllm.vllm_prepare_worker` import paths
+forward to the same modules, including the old Worker `python -m` entry.
+
+Wheels and source distributions include `preparation-lock.sha256`, generated
+from the repository's `uv.lock` by the Store build commands. Rebuilding a wheel
+from a standalone source distribution preserves its bundled digest. Installed
+preparation reads that digest; source-checkout use reads the repository lock
+when no bundled digest exists. Invalid bundled digests fail validation. The
+artifact identity still uses `dependency_lock_sha256` with the same full-lock
+SHA256 meaning. This provenance records the build's declared environment and
+does not by itself prove the installed dependencies or native ABI match it.
+
+The command names, options, downloader method signatures and successful `None`
+return are preserved. Their existing path contracts differ.
+
+| Entry | Storage path priority | Artifact destination |
+| --- | --- | --- |
+| Store CLI | Explicit `--storage-path`, then nonempty `STORAGE_PATH`, then `~/models/` | `<root>/vllm/<model>` |
+| Export example | `STORAGE_PATH` when set, then `--storage-path`, then `~/models`; an empty resolved value falls back to `~/models` | `<root>/<model>` |
+
+The public downloader methods accept `pattern` and `max_size` and report that
+they are ignored, matching the original patch's behavior. These are Python
+method parameters, not additional command-line options.
+
+With `--local-model-path`, the directory is checked before preparation and its
+contents supply the frozen source identity. With only a model name, the adapter
+resolves the Hub default branch to a full commit before preparation and passes
+that revision to the download/verification chain. Resolution errors propagate
+without starting preparation. The existing command therefore needs no new
+required revision argument.
+
+Preparation's optional `flat_layout=True` writes `<storage_path>/<model>` for
+these legacy export roots. Other callers retain the default
+`<storage_path>/vllm/<model>` layout. Both layouts use the same staging,
+independent offline verification, publication and reuse validation. Failure
+cleanup belongs to the transaction, preserving pre-existing target data.
+
+These commands launch real export and verification workers when used normally
+and require GPU approval. CPU entry-point tests replace the Hub and preparation
+calls. Pipeline tests retain real source files and transactions while replacing
+child processes. Those checks do not establish real Hub, native Store, engine
+or native ABI qualification for these commands. Python-only packaging tests
+build source distributions and wheels with native compilation replaced, install
+the wheels without dependencies in fresh environments, and block main-package
+imports while checking the export and Worker entry points.
+
+### Main package preparation
+
+The main package's `VllmModelDownloader.download_vllm_model` also accepts the
+legacy `pattern` and `max_size` arguments, including positional calls. Supplying
+either argument with a non-`None` value logs that both are ignored. An empty
+pattern or zero size retains the same behavior. Preparation receives the full
+model and the supplied source/revision, dtype and TP identity; these legacy
+arguments do not filter tensors or change partition sizes. Successful calls
+return the preparation result and preparation failures propagate to the caller.
+
 `VllmModelDownloader.download_vllm_model` delegates to
 `sllm.vllm_preparation.prepare_vllm_model`. Hub sources require a fixed lowercase
 40-character commit; local sources use an actual complete content inventory and

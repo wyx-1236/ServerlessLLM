@@ -488,6 +488,10 @@ class RoundRobinRouter(SllmRouter):
                     f"worker_id_{startup_node}": 0.1,
                 },
             }
+            if self.backend == "vllm":
+                startup_config["max_concurrency"] = (
+                    instance.max_queue_length + 4
+                )
             logger.info(
                 f"Startup config: {startup_config}, {self.backend_config}"
             )
@@ -607,8 +611,18 @@ class RoundRobinRouter(SllmRouter):
 
         async with self.instance_management_lock:
             if instance_id is None:
-                instance_id, instance = self.ready_inference_instances.popitem()
+                eligible = [
+                    item
+                    for item in self.ready_inference_instances
+                    if not self.ready_inference_instances[item].migrating
+                ]
+                if not eligible:
+                    return
+                instance_id = eligible[-1]
+                instance = self.ready_inference_instances.pop(instance_id)
             elif instance_id in self.ready_inference_instances:
+                if self.ready_inference_instances[instance_id].migrating:
+                    return
                 instance = self.ready_inference_instances.pop(instance_id)
             else:
                 logger.error(f"Instance {instance_id} not found")

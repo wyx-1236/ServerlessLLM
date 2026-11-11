@@ -17,11 +17,20 @@ serving、CUDA 初始化或模型装载，不授予模型、迁移或性能资�
 资格来自明确 commit、依赖、模型 revision、dtype、TP、上下文和执行方式的
 直接测试。CPU 旧行为用例特意暴露继承缺陷，不能把其通过解释为该缺陷已修复。
 
-2026-10-23 [原版核查](original-function-audit.md)补充阻断项：项目官方迁移示例的
+2026-10-23 的历史[原版核查](original-function-audit.md)记录了以下阻断项：项目官方迁移示例的
 Transformers 接续及其新版依赖尚未实机回归；Store CLI 导出仍依赖旧 patch；
 pattern/max_size 参数接受行为与 trace_debug 完成历史视图存在差异。26 项冻结源码
 CPU 对照和 69 项当前 focused 回归不能消除这些完整兼容缺口；方案修订仍待审查。
 不能因上游存在代码或历史探针通过而标记为当前 Fork 支持。
+
+后续 CPU 候选已补齐 Store CLI/导出示例的共享准备入口、旧参数接受行为、独立
+debug 历史，以及旧 vLLM 测试接口。Transformers 候选使用新版 Cache，并修复
+预热 token、剩余预算与 EOS 边界。vLLM 活动请求候选已实现冻结、准备、提交、
+回滚及恢复，保留 V2 的原 prompt/output 分界；这些代码不继承旧提交的 GPU 资格。
+同请求 HTTP 实机入口见 [续写验收范围](migration-continuation-engine-plan.md#同一-http-请求的首批实机验收入口)。
+CPU 检查与固定源码校验不能代替真实引擎采样、缓存、HTTP 续写和独立资源释放。
+上述历史阻断的代码修复与实机关闭是两种状态；官方 Transformers 双模型、其他
+受影响功能、TP2、模型矩阵和最终镜像仍须各自验收。保留活动方案，不发布正式完成版。
 工程验证与原始研究归档来源见 [provenance](provenance.json) 和
 [evidence-index](evidence-index.json)。
 

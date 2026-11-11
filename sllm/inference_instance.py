@@ -45,10 +45,10 @@ def start_instance(
         raise ValueError(f"Unknown backend: {backend}")
 
     model_actor_cls = ray.remote(model_backend_cls)
-
+    actor_options = dict(startup_config)
+    actor_options.setdefault("max_concurrency", 14 if backend == "vllm" else 10)
     return model_actor_cls.options(
         name=instance_id,
-        **startup_config,
-        max_concurrency=10,
+        **actor_options,
         lifetime="detached",
     ).remote(model_name, backend_config)

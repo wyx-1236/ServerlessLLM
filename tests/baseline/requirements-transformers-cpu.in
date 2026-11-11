@@ -1,0 +1,7 @@
+# CPU compatibility profile; never substitute for the serving/native ABI lock.
+torch==2.13.0+cpu
+transformers==5.17.0
+peft==0.21.2
+datasets==5.1.0
+pytest==8.4.2
+numpy==2.3.5

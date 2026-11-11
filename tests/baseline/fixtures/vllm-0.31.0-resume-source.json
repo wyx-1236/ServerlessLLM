@@ -1,0 +1,17 @@
+{
+  "engine_version": "0.31.0",
+  "source_url": "https://raw.githubusercontent.com/vllm-project/vllm/v0.31.0",
+  "verified_wheel": "vllm-0.31.0-cp38-abi3-manylinux_2_28_x86_64.whl",
+  "files": {
+    "vllm/sampling_params.py": "3c37c655a0a60851e3d96d946eb10d1cbb347dee6cd143f38a7fc18c6f66dd8b",
+    "vllm/logprobs.py": "73167aa3641ae4f85eeccc5f5a9384854aba21a30c3aa2dfcc4800f669d1a61e",
+    "vllm/outputs.py": "82a3bac39b00e14a3dbae96b2d00909c1d2de4d5ed9357ad90c8c42fca2b37dc",
+    "vllm/v1/request.py": "dd7c30bf8b0894dc123a739c299c0133566f8cc075b081e45905f1c29506e69d",
+    "vllm/v1/engine/detokenizer.py": "27bf6ae418754de91228d798405058b66d1484f793fd45f9d69396dfca5e9fa4",
+    "vllm/v1/engine/logprobs.py": "148cc1575651c1c39061752a16da620f17951e4528ba30ccafb105e5229ea61a",
+    "vllm/v1/engine/output_processor.py": "c72d0149e18d6da71d53e23b6550d09310af6917523fef6e282b0907d36b8d54",
+    "vllm/v1/core/sched/scheduler.py": "f820bee4f42b878b262a30f3728a97d7413477b2a277748e20f2528ac2ec2f2a",
+    "vllm/v1/core/sched/output.py": "972e0bc8e7af1f4262ac73f660f6b8f798ba780f86c031a9c8a7f10cbfaad3a8",
+    "vllm/v1/structured_output/__init__.py": "92f2b2550d988abd1ac4edf9664b14dd8c2afb4cee4dc585c7348ce3995d5ac5"
+  }
+}

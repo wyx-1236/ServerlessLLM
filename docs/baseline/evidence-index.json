@@ -674,5 +674,31 @@
       "Store CLI GPU export validation",
       "Complete project compatibility or final acceptance"
     ]
+  },
+  "continuation_cpu_candidate_20261111": {
+    "status": "CPU candidate passed; no GPU continuation qualification",
+    "source_base_commit": "119a1a82de5bf21e60e4dee836ef109d33587be8",
+    "indexed_code_identity_sha256": "81e669e13bd4f9bc45eeeccc33d83e206ce8c8691b1b5b1c0abeab3c67d76149",
+    "identity_method": "SHA256 of newline-terminated git ls-files -s records for sllm, sllm_store, scripts, tests and root runtime dependency manifests; documentation excluded to avoid self-reference",
+    "baseline": {
+      "passed": 608,
+      "skipped": 21,
+      "elapsed_seconds": 99.63,
+      "skips": "Torch-dependent Store cases; covered by the separate CPU Torch profile"
+    },
+    "torch_and_transformers": {
+      "passed": 77,
+      "skipped": 0,
+      "elapsed_seconds": 18.97
+    },
+    "engine": "vLLM 0.31.0 V2 fixed-source CPU checks; no full engine execution",
+    "runtime_entry": "scripts/baseline/qualify_continuation.py",
+    "gpu_used": false,
+    "external_release_verified": false,
+    "limitations": [
+      "Same-request HTTP/GPU execution not yet run",
+      "EOS/stop and fault-continuation GPU cases remain separate",
+      "No TP2, model-matrix, performance or final-image qualification"
+    ]
   }
 }

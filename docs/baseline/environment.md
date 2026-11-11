@@ -24,6 +24,16 @@ PyPI 0.8.0 元数据仍固定 Torch 2.7.0、Transformers 4.52.4，且旧 wheel �
 原生构建工具组也锁定，Store build-system 的 Torch 同步为 2.13.0。
 正式构建使用已锁工具和 --no-build-isolation，防止另装旧 Torch。
 
+Store 的准备程序及 Worker 随 `serverless-llm-store` 打包，独立导出使用该包的
+`vllm` extra。主包原有准备模块路径通过兼容入口转发。构建 wheel 或源码包时，
+Store 构建命令将根 `uv.lock` 的 SHA256 写入包内 `preparation-lock.sha256`。
+源码包再次构建 wheel 时沿用包内摘要，因此安装后的准备链无需访问原仓库目录。
+从 checkout 构建时须保留父目录的锁文件，分发源码时使用生成的源码包。
+
+此摘要记录构建所用的依赖锁身份，实际运行仍须安装对应依赖和匹配的原生扩展。
+CPU 打包测试只替换 CUDA 探测与原生扩展编译，实际执行 Python 源码包、wheel
+构建和无依赖安装。完整原生 wheel、GPU 导出及独立离线恢复须另行验证。
+
 ## 无 GPU 检查
 
 在 Linux 上，以下命令只安装 CPU 契约所需依赖，不装 Torch/vLLM/Store：
@@ -34,21 +44,36 @@ uv python install 3.12.13
 uv export --frozen --only-group cpu -o /tmp/sllm-cpu.lock
 uv venv /tmp/sllm-cpu
 uv pip sync --python /tmp/sllm-cpu/bin/python --require-hashes /tmp/sllm-cpu.lock
-/tmp/sllm-cpu/bin/python -m pytest tests/baseline -q
+/tmp/sllm-cpu/bin/python -m pytest tests/baseline tests/backend_test/vllm_backend_test.py -q
 ```
 
 不附着已有 Ray 集群；CPU smoke 自建一个 num_gpus=0、num_cpus=1 的本地 Ray
 实例，完成后 finally shutdown。测试检查没有导入 Torch。CLI 测试使用真实
 Click 解析并替换服务操作，不能据此声称完整 SLLM Controller 已准入。
+旧 vLLM 后端测试也在这个轻量环境执行，使用新版接口的引擎替身，同时保留真实
+后端和兼容适配层。其断言映射与实机覆盖边界见 `tests/baseline/README.md`。
 
 Windows 上可用单独 uv 管理的 Python 做纯配置/替身测试；未装 Linux 依赖的
 测试应明确 skip，不把 Windows 通过当 Linux serving 资格。完整 serving 不在
 Windows 安装。新的 Baseline CPU workflow 使用 GitHub hosted Ubuntu runner，
 没有 --gpus、self-hosted、模型下载或服务 GPU 请求。
 
+打包检查还需要锁定的 setuptools 和 wheel，可在上述轻量 CPU 环境中运行。
+
+```bash
+uv pip install --python /tmp/sllm-cpu/bin/python setuptools==80.10.2 wheel==0.48.0
+/tmp/sllm-cpu/bin/python -m pytest tests/baseline/test_store_packaging.py -q
+```
+
 本地 WSL 跨会话使用时，检查环境和包缓存应放在自己的持久缓存目录；某些
 WSL 配置会在发行版重启后清理 /tmp。Ray 的 socket 则使用短的私有临时路径，
 避免把 pytest 的长用例名称加入 AF_UNIX 路径导致超过 107 字节。
+
+Transformers 缓存兼容检查使用独立的 `requirements-transformers-cpu.txt`，从
+服务锁约束 Python 依赖版本，仅将 Torch 换成明确的 CPU 构建。运行与重建方法见
+[测试说明](../../tests/baseline/README.md#transformers-cpu-cache-profile)。测试
+使用随机初始化的小型 OPT 和本地 tokenizer；这不是完整原模型、Store 或 GPU
+运行环境的资格证据，也不能用于生成正式 serving wheel。
 
 ## 镜像配方
 

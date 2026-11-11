@@ -11,6 +11,7 @@
 - [契约与补丁审计](patch-audit.md)：继承行为、缺陷与配置映射边界。
 - [原版功能与规范核查](original-function-audit.md)：项目承诺、两个后端的迁移续写差异及全项目兼容缺口。
 - [迁移续写兼容方案](migration-continuation-proposal.md)：原版核查后的修订候选，保持既有功能，等待用户审查。
+- [活动请求恢复与交接增补](migration-continuation-engine-plan.md)：固定版本引擎恢复、请求所有权和 CPU/GPU 验证边界。
 - [Linux 环境](environment.md)：依赖锁、CPU 检查及候选镜像配方。
 - [服务生命周期](service-lifecycle.md)：后端/控制面所有权、关闭和手动限定验证入口。
 - [迁移生命周期执行计划](migration-lifecycle-plan.md)：D1 原版调用链和资源回收的 scoped delta；不是已验证迁移资格。
@@ -38,6 +39,10 @@ CPU baseline 检查。提交 `54d099e` 已完成双卡原版迁移链与回滚�
 [迁移候选边界](service-lifecycle.md#d1-migration-candidate-bounded-checks-passed-review-pending)。
 
 ## 必须保留的执行关卡
+
+阶段内按“改一部分、检查一部分、汇报一部分”的顺序推进。每次在聊天中逐文件
+说明改动、作用、前后行为、验证结果、兼容影响和未完成项，再进行下一部分；
+具体要求见根目录 AGENTS.md 和[升级设计](engine-upgrade.md#阶段内逐部分修改与汇报)。
 
 每阶段完成后，在当前协作聊天中提交报告，等用户明确审查通过才开始下一阶段。
 报告列明改动、产物/commit、验证及缺失、方向偏差、资源状态和下一阶段范围。

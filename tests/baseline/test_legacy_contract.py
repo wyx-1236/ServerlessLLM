@@ -7,6 +7,7 @@ These doubles do not establish compatibility with real vLLM.
 import asyncio
 import importlib.util
 import itertools
+import logging
 import sys
 import types
 from dataclasses import dataclass
@@ -292,9 +293,22 @@ def downloader(legacy, monkeypatch):
     return module.VllmModelDownloader()
 
 
+@pytest.mark.parametrize(
+    "legacy_options",
+    [
+        {},
+        {"pattern": None, "max_size": None},
+        {"pattern": "weight"},
+        {"pattern": ""},
+        {"max_size": 0},
+        {"max_size": 1024},
+        {"pattern": "weight", "max_size": 1024},
+    ],
+)
 def test_downloader_delegates_even_when_output_exists(
-    downloader, monkeypatch, tmp_path
+    downloader, monkeypatch, tmp_path, legacy_options, caplog
 ):
+    monkeypatch.setattr(logging.getLogger("ray"), "propagate", True)
     calls = []
     manifest = {"artifact": "verified"}
     preparation = types.ModuleType("sllm.vllm_preparation")
@@ -315,6 +329,7 @@ def test_downloader_delegates_even_when_output_exists(
         2,
         revision="commit",
         source_snapshot=snapshot,
+        **legacy_options,
     )
     assert result is manifest
     assert calls == [
@@ -327,9 +342,20 @@ def test_downloader_delegates_even_when_output_exists(
             },
         )
     ]
+    has_legacy_options = any(
+        value is not None for value in legacy_options.values()
+    )
+    assert (
+        "pattern and max_size are ignored" in caplog.text
+    ) == has_legacy_options
 
 
-def test_downloader_preserves_preparation_error(downloader, monkeypatch):
+@pytest.mark.parametrize(
+    "legacy_options", [{}, {"pattern": "weight", "max_size": 0}]
+)
+def test_downloader_preserves_preparation_error(
+    downloader, monkeypatch, legacy_options
+):
     preparation = types.ModuleType("sllm.vllm_preparation")
     failure = ValueError("verification failed")
 
@@ -340,11 +366,36 @@ def test_downloader_preserves_preparation_error(downloader, monkeypatch):
     preparation.prepare_vllm_model = prepare
     monkeypatch.setitem(sys.modules, "sllm.vllm_preparation", preparation)
     with pytest.raises(ValueError) as caught:
-        downloader.download_vllm_model("logical", None, "float16")
+        downloader.download_vllm_model(
+            "logical", None, "float16", **legacy_options
+        )
     assert caught.value is failure
 
 
-@pytest.mark.parametrize("kwargs", [{"pattern": "weight"}, {"max_size": 0}])
-def test_downloader_rejects_partial_export(downloader, kwargs):
-    with pytest.raises(ValueError, match="pattern|max_size"):
-        downloader.download_vllm_model("logical", "actual", "float16", **kwargs)
+def test_downloader_preserves_positional_export_arguments(
+    downloader, monkeypatch
+):
+    preparation = types.ModuleType("sllm.vllm_preparation")
+    calls = []
+
+    def prepare(*args, **kwargs):
+        calls.append((args, kwargs))
+        return "verified"
+
+    preparation.prepare_vllm_model = prepare
+    monkeypatch.setitem(sys.modules, "sllm.vllm_preparation", preparation)
+    monkeypatch.setenv("STORAGE_PATH", "/models")
+    result = downloader.download_vllm_model(
+        "logical", "actual", "float16", 2, "weight", 0
+    )
+    assert result == "verified"
+    assert calls == [
+        (
+            ("logical", "actual", "float16", 2),
+            {
+                "storage_path": "/models",
+                "revision": None,
+                "source_snapshot": None,
+            },
+        )
+    ]

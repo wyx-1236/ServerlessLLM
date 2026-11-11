@@ -31,11 +31,11 @@ def pipeline(monkeypatch, tmp_path):
     def run(command, log_path, **kwargs):
         calls.append(command)
         Path(log_path).write_text("CPU command double\n")
-        if "sllm.vllm_prepare_worker" not in command:
+        if "sllm_store.vllm_prepare_worker" not in command:
             if "namespace" in faults:
                 raise RuntimeError("network namespace unavailable")
             return
-        mode = command[command.index("sllm.vllm_prepare_worker") + 1]
+        mode = command[command.index("sllm_store.vllm_prepare_worker") + 1]
         request = json.loads(Path(command[-1]).read_text())
         reference = Path(request["reference_path"])
         if mode == "export":
@@ -125,6 +125,67 @@ def test_complete_prepare_then_reuse_without_child_launch(pipeline):
     )
     assert second == first
     assert len(calls) == before
+
+
+@pytest.mark.parametrize("prefix", ["", "vllm"])
+def test_public_export_uses_transaction_and_preserves_legacy_layout(
+    pipeline, prefix
+):
+    from sllm_store.vllm_export import export_vllm_model
+
+    _, source, storage, calls, _ = pipeline
+    export_root = storage / prefix
+    export_vllm_model(
+        "alias/model",
+        "float16",
+        storage_path=str(export_root),
+        local_model_path=str(source),
+        pattern="ignored",
+        max_size=0,
+    )
+    target = export_root / "alias/model"
+    manifest = json.loads((target / "artifact-manifest.json").read_text())
+    assert (target / "artifact-commit.json").is_file()
+    assert manifest["identity"]["model"] == "alias/model"
+    assert manifest["identity"]["revision"].startswith("sha256:")
+    assert manifest["verification"]["tokens_verified"] is True
+    assert not (export_root / "vllm/alias/model").exists()
+    before = len(calls)
+    export_vllm_model(
+        "alias/model",
+        "float16",
+        storage_path=str(export_root),
+        local_model_path=str(source),
+    )
+    assert len(calls) == before
+
+
+def test_public_export_failure_then_retry(pipeline):
+    from sllm_store.vllm_export import export_vllm_model
+
+    _, source, storage, _, faults = pipeline
+    faults.add("restore")
+    neighbor = storage / "neighbor"
+    neighbor.mkdir(parents=True)
+    (neighbor / "keep").write_bytes(b"existing")
+    with pytest.raises(RuntimeError, match="restore child failed"):
+        export_vllm_model(
+            "model",
+            "float16",
+            storage_path=str(storage),
+            local_model_path=str(source),
+        )
+    assert not (storage / "model").exists()
+    assert not list(storage.glob(".model.prepare-*"))
+    assert (neighbor / "keep").read_bytes() == b"existing"
+    faults.clear()
+    export_vllm_model(
+        "model",
+        "float16",
+        storage_path=str(storage),
+        local_model_path=str(source),
+    )
+    assert (storage / "model/artifact-commit.json").is_file()
 
 
 @pytest.mark.parametrize(

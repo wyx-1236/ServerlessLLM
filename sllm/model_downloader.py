@@ -169,8 +169,9 @@ class VllmModelDownloader:
         source_snapshot=None,
     ):
         if pattern is not None or max_size is not None:
-            raise ValueError(
-                "pattern and max_size are unsupported for verified exports"
+            # The original patch accepted these arguments but ignored them.
+            logger.warning(
+                "pattern and max_size are ignored, as in the original exporter"
             )
 
         from sllm.vllm_preparation import prepare_vllm_model

@@ -35,13 +35,15 @@ REQUIRED_CHECKS = (
 )
 
 
-def validate_approval(config, environ, now, cgroup):
+def validate_approval(
+    config, environ, now, cgroup, *, scope="stage-d1-migration", run_prefix="d1"
+):
     indices = config.get("physical_gpu_indices")
     uuids = config.get("gpu_uuids")
     if (
         config.get("approved") is not True
         or config.get("server") != "inspur-gpu-12"
-        or config.get("scope") != "stage-d1-migration"
+        or config.get("scope") != scope
         or not isinstance(indices, list)
         or len(indices) != 2
         or any(type(i) is not int or i < 0 for i in indices)
@@ -59,7 +61,7 @@ def validate_approval(config, environ, now, cgroup):
         )
         or len(set(uuids)) != 2
     ):
-        raise ValueError("Missing exact approved two-GPU D1 scope")
+        raise ValueError("Missing exact approved two-GPU scope: " + scope)
     deadline = config.get("deadline_epoch")
     if (
         type(deadline) not in (float, int)
@@ -85,9 +87,13 @@ def validate_approval(config, environ, now, cgroup):
         raise ValueError("Output and Ray root must be absolute")
     short_owned = (
         ray_root.parent == Path("/tmp")
-        and ray_root.name.startswith("sd1-")
-        and output.name == "gpu-stage-d1-" + ray_root.name[4:]
-        and unit == "sllm-d1-migration-" + ray_root.name[4:] + ".service"
+        and ray_root.name.startswith(f"s{run_prefix}-")
+        and output.name
+        == f"gpu-stage-{run_prefix}-" + ray_root.name[len(run_prefix) + 2 :]
+        and unit
+        == f"sllm-{run_prefix}-migration-"
+        + ray_root.name[len(run_prefix) + 2 :]
+        + ".service"
     )
     if (
         output.is_symlink()
@@ -853,7 +859,16 @@ async def exercise_model(config, output, result, root, metrics):
             )
 
 
-async def qualify(config, output, result):
+async def qualify(
+    config,
+    output,
+    result,
+    *,
+    exercise=None,
+    pass_check=None,
+    result_name="migration-result.json",
+    namespace="stage-d1",
+):
     # Set the multiprocess directory before importing vLLM/Prometheus anywhere.
     metrics = output / "prometheus"
     metrics.mkdir()
@@ -877,6 +892,11 @@ async def qualify(config, output, result):
         check_network_namespace,
     )
     from sllm_store.proto import storage_pb2, storage_pb2_grpc
+
+    if exercise is not None:
+        # The shared script is imported by the continuation entry point;
+        # workers need its probe functions by value, not an uninstalled module.
+        ray.cloudpickle.register_pickle_by_value(sys.modules[__name__])
 
     cluster, store, controller, server, http_task = None, None, None, None, None
     result["cleanup_errors"] = []
@@ -943,7 +963,7 @@ async def qualify(config, output, result):
                 )
         ray.init(
             address=cluster.address,
-            namespace="stage-d1-" + output.name,
+            namespace=namespace + "-" + output.name,
             _node_ip_address="127.0.0.2",
         )
         result["ray_nodes"] = [
@@ -1000,7 +1020,9 @@ async def qualify(config, output, result):
             return server.started
 
         await wait_until(http_started, bool, 10)
-        await exercise_model(config, output, result, root, metrics)
+        await (exercise or exercise_model)(
+            config, output, result, root, metrics
+        )
         await asyncio.wait_for(controller.shutdown.remote(), 45)
         result["checks"]["controller_shutdown"] = True
     except BaseException:
@@ -1044,10 +1066,10 @@ async def qualify(config, output, result):
 
             await cleanup("store", stop_store)
         result["cleanup_completed"] = not result["cleanup_errors"]
-        result["passed"] = runtime_passed(result)
+        result["passed"] = (pass_check or runtime_passed)(result)
         result["status"] = "passed" if result["passed"] else "failed"
         result["ended_epoch"] = time.time()
-        write(output / "migration-result.json", result)
+        write(output / result_name, result)
 
 
 def main():

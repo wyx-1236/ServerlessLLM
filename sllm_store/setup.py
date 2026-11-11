@@ -26,7 +26,6 @@ from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 
-
 from torch.utils.cpp_extension import CUDA_HOME
 from torch.utils.cpp_extension import ROCM_HOME
 
@@ -113,6 +112,8 @@ def read_readme() -> str:
 
 
 sys.path.append(Path.cwd().as_posix())
+
+from build_support import BuildPy, Sdist  # noqa: E402
 
 
 class CMakeExtension(Extension):
@@ -201,6 +202,8 @@ class cmake_build_ext(build_ext):
 
 
 cmdclass = {
+    "build_py": BuildPy,
+    "sdist": Sdist,
     "build_ext": cmake_build_ext,
     "install": CustomInstall,
 }
@@ -218,7 +221,7 @@ setup(
         "console_scripts": ["sllm-store=sllm_store.cli:main"],
     },
     package_data={
-        "sllm_store": ["py.typed", "*.so"],
+        "sllm_store": ["py.typed", "*.so", "preparation-lock.sha256"],
     },
     packages=[
         "sllm_store",

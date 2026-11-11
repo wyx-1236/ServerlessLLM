@@ -2,10 +2,13 @@ name: Baseline CPU contracts
 
 on:
   push:
-    branches: [codex/vllm-upgrade, codex/baseline-vllm]
+    branches: [vllm-upgrade, codex/vllm-upgrade, codex/baseline-vllm]
     paths:
       - 'sllm/**'
+      - 'scripts/baseline/**'
       - 'tests/baseline/**'
+      - 'tests/backend_test/vllm_backend_test.py'
+      - 'tests/backend_test/transformers_cache_cpu_test.py'
       - 'pyproject.toml'
       - 'requirements*.txt'
       - 'setup.py'
@@ -35,7 +38,11 @@ jobs:
       - run: command -v g++
       - run: uv export --frozen --only-group cpu -o /tmp/sllm-cpu.lock
       - run: uv venv /tmp/sllm-cpu && uv pip sync --python /tmp/sllm-cpu/bin/python --require-hashes /tmp/sllm-cpu.lock
-      - run: /tmp/sllm-cpu/bin/python -m pytest tests/baseline -q
+      - run: uv pip install --python /tmp/sllm-cpu/bin/python --require-hashes -r tests/baseline/requirements-vllm-source-cpu.txt
+      - run: /tmp/sllm-cpu/bin/python tests/baseline/fetch_vllm_resume_source.py /tmp/sllm-vllm-source
+      - run: /tmp/sllm-cpu/bin/python -m pytest tests/baseline tests/backend_test/vllm_backend_test.py -q
+        env:
+          SLLM_VLLM_031_SOURCE: /tmp/sllm-vllm-source
 
   tensor-contracts:
     runs-on: ubuntu-24.04
@@ -52,3 +59,20 @@ jobs:
       - run: uv pip sync --python /tmp/sllm-tensor-cpu/bin/python --require-hashes --torch-backend cpu tests/baseline/requirements-tensor-cpu.txt
       - run: /tmp/sllm-tensor-cpu/bin/python -c "import torch; assert torch.version.cuda is None; assert not torch.cuda.is_initialized()"
       - run: /tmp/sllm-tensor-cpu/bin/python -m pytest sllm_store/tests/python/test_tensor_layout.py tests/baseline/test_vllm_store_plugin.py tests/baseline/test_artifact.py -q
+
+  transformers-cache-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CUDA_VISIBLE_DEVICES: ''
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.13.4'
+          python-version: '3.12.13'
+      - run: uv venv /tmp/sllm-transformers-cpu
+      - run: uv pip sync --python /tmp/sllm-transformers-cpu/bin/python --require-hashes --torch-backend cpu tests/baseline/requirements-transformers-cpu.txt
+      - run: /tmp/sllm-transformers-cpu/bin/python -m pytest tests/backend_test/transformers_cache_cpu_test.py -q

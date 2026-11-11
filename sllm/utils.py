@@ -72,12 +72,13 @@ class InstanceHandle:
     backend_instance: Optional[ray.actor.ActorHandle] = None
     ready: bool = False
     concurrency: int = 0
+    migrating: bool = False
 
     lock: asyncio.Lock = asyncio.Lock()
 
     async def add_requests(self, num_requests: int = 1):
         async with self.lock:
-            if not self.ready:
+            if not self.ready or (self.migrating and num_requests > 0):
                 return False
             if (
                 self.concurrency + num_requests > self.max_queue_length
@@ -89,7 +90,10 @@ class InstanceHandle:
 
     async def check_request_queue(self):
         async with self.lock:
-            return self.concurrency + 1 <= self.max_queue_length
+            return (
+                not self.migrating
+                and self.concurrency + 1 <= self.max_queue_length
+            )
 
     async def get_status(self):
         async with self.lock:

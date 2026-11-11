@@ -45,6 +45,40 @@ or authorizes another batch. CPU tests and source review do not qualify GPU
 serving, Worker failure recovery, migration, TP2 or a general model matrix;
 acceptance remains tied to separately archived execution and cleanup evidence.
 
+## Debug history and active snapshots
+
+`get_current_tokens()` and the `request_trace` compatibility view read only the
+active registry, including requests admitted before their first engine output.
+MigrationRouter, scheduler status and service qualification use this boundary.
+Finishing, failing or cancelling a request removes it from that registry.
+
+With `trace_debug=True`, finalized records are retained in `request_history`.
+`await backend.get_debug_tokens()` exposes a copied `dict[request_id, list[int]]`
+for diagnostic callers. A Ray caller uses `get_debug_tokens.remote()`. Each value
+contains the observed prompt IDs followed by the first choice's output IDs,
+matching the original token projection. Pooling records contain prompt IDs only;
+records without an engine output have an empty list. Failed and cancelled
+requests may have retained tokens, so presence in this view does not indicate
+successful completion. Reading or changing the returned dictionary/lists does
+not mutate backend records. Both snapshot methods use the request-state lock.
+
+History collection is disabled by default. Retained records survive engine
+closure for the lifetime of the backend object; they are neither counted by
+draining nor passed to abort. As with the existing history dictionary, a reused
+request ID replaces its previous record when that request finishes. The raw
+dictionary remains available to the existing migration qualification probe,
+which separately records prompt and output tokens.
+
+The fixed upstream `get_current_tokens()` implementation also returned completed
+records when debug tracing was enabled, contrary to its documented ongoing-only
+contract. Its history-reading test now explicitly uses `get_debug_tokens()`.
+Diagnostic callers relying on the old completed-token behavior must make the
+same change. Active migration callers continue using `get_current_tokens()`.
+The old shutdown test's expectation of aborting an already completed request is
+also corrected. CPU coverage lives in `test_vllm_debug_history.py`; the legacy
+backend test module still has other old-engine fixtures and is not qualified by
+the lightweight CPU suite.
+
 ## Bounded runtime qualification
 
 Executable commit `1478c0acd6d5f8ceca87d4cd1c8cafcb5bc8510a` passed
@@ -119,3 +153,26 @@ the passing commit only normalizes valid UUID representation. See
 [runtime evidence](evidence-index.json#stage_d1_runtime_qualification) for
 identities, resource peaks, archive hashes and exclusions. D1 review and full
 baseline acceptance remain pending; TP2 belongs to a separate review gate.
+
+## Same-request continuation qualification entry
+
+`scripts/baseline/qualify_continuation.py --approval <approved-config.json>`
+consumes a separate `stage-d2-continuation` approval. It reuses the private
+Store/Ray/HTTP lifecycle and exact device/cgroup/deadline/deployment guards,
+while retaining the original D1 entry and its historical acceptance meaning.
+Importing it or using `--help` does not import an engine or request resources.
+
+The bounded suite requires both greedy single-choice and explicitly seeded
+two-choice requests to complete through the original HTTP call. Source freeze,
+target preparation and resume events use the existing `trace_debug` setting.
+Each event includes schema, backend PID and epoch; frozen/prepared events
+contain full plain-data snapshots. They may include request text and logprobs,
+like existing debug history, and are absent when debug tracing is disabled.
+
+The final source snapshots, target histories, original HTTP attempt ledger,
+full control outputs, request accounting and target-specific cache counters
+are checked before success. An earlier active observation or a fresh HTTP
+request alone cannot pass. See the [bounded scenarios and exclusions](migration-continuation-engine-plan.md#同一-http-请求的首批实机验收入口).
+`continuation-result.json` does not claim externally verified GPU release.
+An actual approved run and independently observed release remain required;
+the presence of this entry point is not runtime qualification.

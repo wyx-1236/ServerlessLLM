@@ -1,5 +1,7 @@
 recursive-include csrc *.cpp *.h *.cc
 include requirements.txt
+include build_support.py
+include sllm_store/preparation-lock.sha256
 include CMakeLists.txt
 include cmake/utils.cmake
 include proto/storage.proto

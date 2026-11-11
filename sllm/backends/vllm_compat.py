@@ -76,7 +76,12 @@ def engine_args(model, config):
             store_address=address,
             store_root=str(root),
         )
-    return vllm.AsyncEngineArgs(**projected)
+    args = vllm.AsyncEngineArgs(**projected)
+    if hasattr(args, "scheduler_cls"):
+        from sllm.backends.vllm_resume_adapter import configure_args
+
+        configure_args(args)
+    return args
 
 
 async def abort(engine, request_id):
@@ -105,4 +110,13 @@ def create(args):
                 self.shutdown()
                 raise
 
-    return OwnedEngine.from_engine_args(args)
+    engine = OwnedEngine.from_engine_args(args)
+    if hasattr(engine, "output_processor"):
+        from sllm.backends.vllm_resume_adapter import install
+
+        try:
+            install(engine)
+        except BaseException:
+            engine.shutdown()
+            raise
+    return engine

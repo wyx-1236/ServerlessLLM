@@ -190,7 +190,12 @@ async def test_missing_instance_releases_reserved_request(chain):
 
 
 @pytest.mark.asyncio
-async def test_preempted_transformers_branch_copies_token_budget(chain):
+@pytest.mark.parametrize(
+    "data,remaining", [({"max_tokens": 4}, 2), ({}, 8), ({"max_tokens": 2}, 0)]
+)
+async def test_preempted_transformers_branch_copies_token_budget(
+    chain, data, remaining
+):
     router = chain.router
     router.backend = "transformers"
     chain.source.generate = rpc(
@@ -207,17 +212,17 @@ async def test_preempted_transformers_branch_copies_token_budget(chain):
     router.ready_inference_instances["target"] = SimpleNamespace(
         backend_instance=chain.target
     )
-    data = {"max_tokens": 4}
+    original = dict(data)
     task = asyncio.create_task(router.inference(data, "generate"))
     try:
         future = await join(router.request_queue.get())
         router.ready_inference_instances["source"].concurrency = 1
         future.set_result("source")
         assert await join(task) == {"done": True}
-        assert data == {"max_tokens": 4}
+        assert data == original
         assert chain.target.resume_generate.remote.call_args.kwargs[
             "request_data"
-        ] == {"max_tokens": 2}
+        ] == {"max_tokens": remaining}
     finally:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
@@ -249,13 +254,13 @@ async def test_repeated_source_plan_has_only_one_target_owner(chain):
 
 
 @pytest.mark.asyncio
-async def test_source_request_releases_slot_after_cutover(chain):
+async def test_legacy_source_request_releases_slot_after_cutover(chain):
     started, release = asyncio.Event(), asyncio.Event()
 
     async def generate(**kw):
         started.set()
         await release.wait()
-        return {"choices": [{"finish_reason": "abort"}]}
+        return {"done": True}
 
     chain.source.generate = SimpleNamespace(remote=generate)
     router = chain.router
@@ -269,7 +274,7 @@ async def test_source_request_releases_slot_after_cutover(chain):
         await join(started.wait())
         assert await join(router.execute_migration_plan(chain.plan)) == "target"
         release.set()
-        assert (await join(task))["choices"][0]["finish_reason"] == "abort"
+        assert await join(task) == {"done": True}
         assert router.request_count == source.concurrency == 0
         assert not router.allocated_instances
     finally:

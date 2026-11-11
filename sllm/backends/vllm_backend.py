@@ -31,7 +31,9 @@ from vllm import (
 from vllm.inputs import TokensPrompt
 
 from sllm.backends import vllm_compat
+from sllm.backends import vllm_resume_adapter as resume_adapter
 from sllm.backends.backend_utils import BackendStatus, SllmBackend
+from sllm.backends.vllm_migration import VllmMigration
 
 logger = logging.getLogger("ray")
 
@@ -96,6 +98,15 @@ def process_embedding_output(
     return api_response
 
 
+def _request_tokens(output, input_tokens=None):
+    tokens = list(input_tokens or [])
+    if output is not None:
+        tokens = list(output.prompt_token_ids or [])
+        if isinstance(output.outputs, list) and output.outputs:
+            tokens += list(output.outputs[0].token_ids)
+    return tokens
+
+
 class LLMEngineStatusDict:
     """Compatibility view of active requests, separate from debug history."""
 
@@ -116,7 +127,7 @@ class LLMEngineStatusDict:
             return len(self.status_dict)
 
 
-class VllmBackend(SllmBackend):
+class VllmBackend(VllmMigration, SllmBackend):
     def __init__(
         self, model: str, backend_config: Optional[Dict[str, Any]] = None
     ):
@@ -138,6 +149,7 @@ class VllmBackend(SllmBackend):
         self._close_task = None
         self._abort_task = None
         self._request_counter = count()
+        self._init_migration(model)
 
     async def init_backend(self):
         async with self.status_lock:
@@ -151,10 +163,20 @@ class VllmBackend(SllmBackend):
                 raise
             self.status = BackendStatus.RUNNING
 
-    async def _admit(self, request_id, input_tokens):
-        async with self.status_lock:
+    async def _admit(
+        self, request_id, input_tokens, *, metadata=None, model_name=None
+    ):
+        async with self._migration_condition:
             if self.status != BackendStatus.RUNNING:
                 return "Engine is not running"
+            if request_id in self._migration_cancelled:
+                return "Request cancelled"
+            context = self._migration
+            if context is not None and (
+                context["phase"] != "freezing"
+                or request_id not in context["expected"]
+            ):
+                return "Engine is frozen for migration"
             if request_id in self.active_requests:
                 return f"Duplicate request id: {request_id}"
             self.active_requests[request_id] = {
@@ -163,8 +185,15 @@ class VllmBackend(SllmBackend):
                 "task": asyncio.current_task(),
                 "terminal": False,
                 "aborting": False,
+                "metadata": metadata,
+                "model_name": model_name,
+                "engine_ids": [request_id],
+                "run_task": None,
+                "paused": asyncio.Event(),
+                "migration": context,
             }
             self._drained.clear()
+            self._migration_condition.notify_all()
         return None
 
     async def _abort_request(self, request_id):
@@ -174,21 +203,38 @@ class VllmBackend(SllmBackend):
                 return
             record["aborting"] = True
             engine = self.engine
+            engine_ids = list(record["engine_ids"])
+            run_task = record["run_task"]
         try:
-            await vllm_compat.abort(engine, request_id)
+            # User cancellation discards unobserved output. Migration uses
+            # _freeze_iterator instead and explicitly drains the abort output.
+            if run_task is not None and not run_task.done():
+                run_task.cancel()
+                await asyncio.gather(run_task, return_exceptions=True)
+            await asyncio.gather(
+                *(
+                    vllm_compat.abort(engine, engine_id)
+                    for engine_id in engine_ids
+                )
+            )
         except Exception:
             logger.exception("Engine abort failed for request %s", request_id)
 
     async def _finish(self, request_id):
-        async with self.status_lock:
+        async with self._migration_condition:
             record = self.active_requests.pop(request_id)
             record["terminal"] = True
+            self._remember_terminal(request_id)
             if self.trace_debug:
                 self.request_history[request_id] = record["output"]
             if not self.active_requests:
                 self._drained.set()
+            self._migration_condition.notify_all()
+        if hasattr(self.engine, "_sllm_resume_adapter"):
+            for engine_id in record["engine_ids"]:
+                resume_adapter.forget_request(self.engine, engine_id)
 
-    async def generate(self, request_data):
+    async def generate(self, request_data, *, migration_tracked=False):
         if request_data is None:
             return {"error": "Request data is missing"}
         data = dict(request_data)
@@ -204,24 +250,41 @@ class VllmBackend(SllmBackend):
         if input_tokens is not None:
             inputs = TokensPrompt(prompt_token_ids=list(input_tokens))
         request_id = data.pop("request_id", f"chatcmpl-{uuid.uuid4()}")
+        if migration_tracked:
+            async with self.status_lock:
+                self._migration_tracked.add(request_id)
         try:
             sampling_params = SamplingParams(**data)
         except Exception as error:
+            await self._mark_terminal(request_id)
             return {"error": f"Invalid sampling parameters: {error}"}
-        error = await self._admit(request_id, input_tokens)
-        if error:
-            return {"error": error}
-        final_output = None
+        metadata = None
         try:
-            async for output in self.engine.generate(
-                inputs, sampling_params, request_id
-            ):
-                final_output = output
-                async with self.status_lock:
-                    self.active_requests[request_id]["output"] = output
-            if final_output is None:
-                return {"error": "Engine returned no output"}
-            return process_output(final_output, model_name)
+            if hasattr(self.engine, "_sllm_resume_adapter"):
+                inputs, metadata = await resume_adapter.prepare_request(
+                    self.engine, inputs, sampling_params, request_id
+                )
+                input_tokens = metadata["prompt_token_ids"]
+        except asyncio.CancelledError:
+            await self._mark_terminal(request_id)
+            raise
+        except Exception as error:
+            await self._mark_terminal(request_id)
+            return {"error": str(error)}
+        error = await self._admit(
+            request_id, input_tokens, metadata=metadata, model_name=model_name
+        )
+        if error:
+            await self._mark_terminal(request_id)
+            return {"error": error}
+        try:
+            return await self._run_generation(
+                request_id,
+                lambda: self.engine.generate(
+                    inputs, sampling_params, request_id
+                ),
+                process_output,
+            )
         except asyncio.CancelledError:
             await self._abort_request(request_id)
             raise
@@ -232,7 +295,12 @@ class VllmBackend(SllmBackend):
             await self._finish(request_id)
 
     async def _close(self):
+        owned = self._owned_migration_tasks()
+        if owned:
+            await asyncio.gather(*owned, return_exceptions=True)
         await self._drained.wait()
+        if self._abort_task is not None:
+            await asyncio.shield(self._abort_task)
         try:
             await vllm_compat.close(self.engine)
         finally:
@@ -246,11 +314,25 @@ class VllmBackend(SllmBackend):
                 *(self._abort_request(request_id) for request_id in requests)
             )
         finally:
-            # Abort should terminate the engine iterator; cancellation also makes
-            # bounded progress when a failed engine no longer yields a terminal.
+            # Abort terminates the iterator; cancellation also makes bounded
+            # progress when a failed engine no longer yields a terminal.
             for task in requests.values():
                 if task is not None and not task.done():
                     task.cancel()
+            await asyncio.gather(
+                *(task for task in requests.values() if task is not None),
+                return_exceptions=True,
+            )
+
+    def _owned_migration_tasks(self):
+        tasks = set(self._migration_preparing.values())
+        tasks.update(
+            entry["task"]
+            for entries in self._migration_prepared.values()
+            for entry in entries.values()
+            if entry["task"] is not None
+        )
+        return [task for task in tasks if not task.done()]
 
     async def _begin_close(self, force):
         async with self.status_lock:
@@ -265,10 +347,13 @@ class VllmBackend(SllmBackend):
                     key: value["task"]
                     for key, value in self.active_requests.items()
                 }
+                for index, task in enumerate(self._owned_migration_tasks()):
+                    requests[("internal-migration", index)] = task
                 self._abort_task = asyncio.create_task(
                     self._abort_active(requests)
                 )
             close_task, abort_task = self._close_task, self._abort_task
+            self._migration_condition.notify_all()
         try:
             if abort_task is not None:
                 await asyncio.shield(abort_task)
@@ -284,17 +369,26 @@ class VllmBackend(SllmBackend):
         await self._begin_close(True)
 
     async def get_current_tokens(self):
+        """Copy active request tokens for migration, excluding debug history."""
         async with self.status_lock:
-            snapshots = []
-            for record in self.active_requests.values():
-                output = record["output"]
-                tokens = list(record["tokens"])
-                if output is not None:
-                    tokens = list(output.prompt_token_ids or [])
-                    if isinstance(output.outputs, list) and output.outputs:
-                        tokens += list(output.outputs[0].token_ids)
-                snapshots.append(tokens)
-            return snapshots
+            return [
+                _request_tokens(record["output"], record["tokens"])
+                for record in self.active_requests.values()
+            ]
+
+    async def get_debug_tokens(self) -> Dict[str, List[int]]:
+        """Copy finalized trace_debug token history, keyed by request ID.
+
+        Values contain prompt tokens and the first choice's observed output.
+        Requests ending before any output have an empty list. Retained records
+        include failed/cancelled requests and do not imply successful
+        completion.
+        """
+        async with self.status_lock:
+            return {
+                request_id: _request_tokens(output)
+                for request_id, output in self.request_history.items()
+            }
 
     async def resume_kv_cache(self, request_datas):
         results = await asyncio.gather(

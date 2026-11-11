@@ -45,6 +45,9 @@ def new_router():
 @pytest_asyncio.fixture
 async def chain(monkeypatch):
     router = new_router()
+    # This fixture owns the retained snapshot/replay/Transformers protocol.
+    # Transparent vLLM handoff has a separate versioned-protocol fixture.
+    router.backend = "transformers"
     events = []
     snapshots = [[[10, 11, 20, 21]], [[10, 11, 20, 21, 22]]]
     reservations = {}

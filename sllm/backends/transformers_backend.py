@@ -402,22 +402,45 @@ class TransformersBackend(SllmBackend):
         logger.info(f"Current tokens: {status}")
         return status
 
+    def _matching_replay_cache(self, input_ids):
+        """Reuse only a known, strict token prefix of the authoritative input."""
+        cache = self.past_key_values
+        cached_tokens = getattr(self, "_cached_tokens", None)
+        if cache is None or cached_tokens is None:
+            return None
+        length = cache.get_seq_length()
+        if (
+            length <= 0
+            or length >= input_ids.shape[1]
+            or length > cached_tokens.shape[1]
+            or cached_tokens.shape[0] != input_ids.shape[0]
+        ):
+            return None
+        if not torch.equal(cached_tokens[:, :length], input_ids[:, :length]):
+            return None
+        return cache
+
     def resume_kv_cache(self, request_datas):
         logger.info(f"Resuming cache for {request_datas}")
         with torch.no_grad():
             device = self.model.device
             input_ids = torch.tensor(request_datas).to(device)
             logger.info(input_ids)
+            cache = self._matching_replay_cache(input_ids)
+            # generate mutates Cache in place. A failed replay must not leave a
+            # partially updated cache paired with the previous token identity.
+            self.past_key_values = None
+            self._cached_tokens = None
             output = self.model.generate(
                 input_ids,
-                past_key_values=self.past_key_values,
+                past_key_values=cache,
                 max_new_tokens=1,
                 return_dict_in_generate=True,
-                return_legacy_cache=True,
             )
             self.past_key_values = output.past_key_values
+            self._cached_tokens = input_ids.detach().clone()
             self.current_tokens = output.sequences
-        logger.info(f"Resumed {len(self.past_key_values[0][0][0][0])} tokens")
+        logger.info("Resumed %s tokens", self.past_key_values.get_seq_length())
 
     def resume_generate(
         self, request_data: Optional[Dict[str, Any]], current_output
@@ -431,7 +454,9 @@ class TransformersBackend(SllmBackend):
         model_name = request_data.get("model", "dummy-model")
         messages = request_data.get("messages", [])
         temperature = request_data.get("temperature", 0.7)
-        max_tokens = request_data.get("max_tokens", 10)
+        # Explicit max_tokens is the Router's remaining budget. A direct call
+        # omitting it still shares generate()'s original default total of 10.
+        max_tokens = request_data.get("max_tokens")
 
         # Combine messages to form the prompt
         try:
@@ -449,21 +474,52 @@ class TransformersBackend(SllmBackend):
 
         inputs = self._tokenize(prompt)
         prompt_tokens = inputs.input_ids.shape[1]
+        source = torch.tensor(current_output, device=self.model.device)
+        if (
+            source.ndim != 2
+            or source.shape[0] != 1
+            or source.shape[1] < prompt_tokens
+            or not torch.equal(source[:, :prompt_tokens], inputs.input_ids)
+        ):
+            raise ValueError(
+                "Final source snapshot must include the original prompt"
+            )
+        source_tokens = source.shape[1]
+        if "max_tokens" not in request_data:
+            max_tokens = 10 - (source_tokens - prompt_tokens)
+        if (
+            not isinstance(max_tokens, int)
+            or isinstance(max_tokens, bool)
+            or max_tokens < 0
+        ):
+            raise ValueError(
+                "Remaining max_tokens must be a nonnegative integer"
+            )
+        eos_tokens = self.model.generation_config.eos_token_id
+        if eos_tokens is None:
+            eos_tokens = []
+        elif isinstance(eos_tokens, int):
+            eos_tokens = [eos_tokens]
+        source_finished = (
+            source_tokens > prompt_tokens and source[0, -1].item() in eos_tokens
+        )
+        cache = self._matching_replay_cache(source)
+        self.past_key_values = None
+        self._cached_tokens = None
 
         # Generate response
         try:
             with torch.no_grad():
-                device = self.model.device
-                current_output = torch.tensor(current_output).to(device)
-                if len(current_output[0]) < len(self.current_tokens[0]):
-                    current_output = self.current_tokens
-                outputs = self.model.generate(
-                    current_output,
-                    past_key_values=self.past_key_values,
-                    max_new_tokens=max_tokens,
-                    temperature=temperature,
-                    streamer=self.inf_status,
-                )
+                if max_tokens == 0 or source_finished:
+                    outputs = source
+                else:
+                    outputs = self.model.generate(
+                        source,
+                        past_key_values=cache,
+                        max_new_tokens=max_tokens,
+                        temperature=temperature,
+                        streamer=self.inf_status,
+                    )
         except DeletingException:
             logger.error("Backend is shutting down. Aborting request")
             raise DeletingException("Backend is shutting down")
@@ -476,9 +532,12 @@ class TransformersBackend(SllmBackend):
             )
             total_tokens = len(outputs[0])
             completion_tokens = total_tokens - prompt_tokens
-            # FIXME: consider corner case when max_tokens is reached
+            new_tokens = total_tokens - source_tokens
+            ended_at_eos = (
+                completion_tokens > 0 and outputs[0, -1].item() in eos_tokens
+            )
             finish_reason = (
-                "stop" if completion_tokens < max_tokens else "length"
+                "stop" if ended_at_eos or new_tokens < max_tokens else "length"
             )
 
             # Generate response compatible with OpenAI's API
@@ -505,6 +564,6 @@ class TransformersBackend(SllmBackend):
                 },
             }
 
-            self.inf_status.delete()
-
             return response
+        finally:
+            self.inf_status.delete()
