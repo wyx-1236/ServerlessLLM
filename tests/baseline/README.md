@@ -6,6 +6,15 @@ install Torch, vLLM, or the Store native extension. Torch-dependent plugin
 checks explicitly skip there and run in the separate tensor profile below.
 Neither profile requests a GPU.
 
+For a complete CPU review, prepare and check the required environments before
+running tests, then run the light suite with the pinned vLLM source, the tensor
+profile, and the Transformers cache profile against the same checkout. A light
+suite result alone is not a complete CPU result. Its Torch-dependent skips must
+be matched to passing cases in a fresh tensor-profile run; earlier results do
+not close the current run. Missing required dependencies or pinned source are
+environment failures to resolve before reporting acceptance, even when pytest
+returns success with skips. Report each profile and any remaining skips.
+
 The local Store Python source directory is added to the test interpreter and
 CPU child processes by `conftest.py`, without loading its native extensions.
 Standalone packaging tests remove this source-path environment before checking
@@ -122,6 +131,7 @@ never substitute for the serving lock or a CUDA/native ABI acceptance result.
 ```sh
 uv venv /tmp/sllm-tensor-cpu --python 3.12.13
 uv pip sync --python /tmp/sllm-tensor-cpu/bin/python --require-hashes --torch-backend cpu tests/baseline/requirements-tensor-cpu.txt
+/tmp/sllm-tensor-cpu/bin/python -c "import pytest, torch; assert torch.version.cuda is None; assert not torch.cuda.is_initialized()"
 /tmp/sllm-tensor-cpu/bin/python -m pytest sllm_store/tests/python/test_tensor_layout.py tests/baseline/test_vllm_store_plugin.py tests/baseline/test_artifact.py -q
 ```
 
@@ -151,6 +161,7 @@ qualified by these cache tests. No pretrained model is downloaded.
 ```sh
 uv venv /tmp/sllm-transformers-cpu --python 3.12.13
 uv pip sync --python /tmp/sllm-transformers-cpu/bin/python --require-hashes --torch-backend cpu tests/baseline/requirements-transformers-cpu.txt
+CUDA_VISIBLE_DEVICES='' HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 /tmp/sllm-transformers-cpu/bin/python -c "import pytest, torch, transformers, peft, datasets; assert torch.version.cuda is None; assert not torch.cuda.is_initialized()"
 CUDA_VISIBLE_DEVICES='' HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 /tmp/sllm-transformers-cpu/bin/python -m pytest tests/backend_test/transformers_cache_cpu_test.py -q
 ```
 

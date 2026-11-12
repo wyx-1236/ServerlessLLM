@@ -12,6 +12,7 @@
     "vllm/v1/engine/output_processor.py": "c72d0149e18d6da71d53e23b6550d09310af6917523fef6e282b0907d36b8d54",
     "vllm/v1/core/sched/scheduler.py": "f820bee4f42b878b262a30f3728a97d7413477b2a277748e20f2528ac2ec2f2a",
     "vllm/v1/core/sched/output.py": "972e0bc8e7af1f4262ac73f660f6b8f798ba780f86c031a9c8a7f10cbfaad3a8",
-    "vllm/v1/structured_output/__init__.py": "92f2b2550d988abd1ac4edf9664b14dd8c2afb4cee4dc585c7348ce3995d5ac5"
+    "vllm/v1/structured_output/__init__.py": "92f2b2550d988abd1ac4edf9664b14dd8c2afb4cee4dc585c7348ce3995d5ac5",
+    "vllm/v1/metrics/stats.py": "b96cabb8f8e692c6c71f30cc2e6793fa86b112bb3ab4a27f6dcb22f3a72e4d68"
   }
 }

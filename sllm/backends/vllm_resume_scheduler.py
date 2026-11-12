@@ -35,6 +35,13 @@ class ResumeScheduler(Scheduler):
             request.append_output_token_ids(tokens)
             # append_output_token_ids updates all_token_ids and block hashes;
             # computed remains zero so no source replica's KV is assumed.
+            if tokens:
+                # This choice already completed its first prompt prefill.
+                # A target-local cache hit may also cover restored output;
+                # upstream first-prefill stats assume prompt-only hits.
+                # Consume that one-shot state without changing cache lookup,
+                # the prompt boundary, or the real preemption counter.
+                request.take_prefill_stats()
             request._sllm_resume_grammar_pending = bool(tokens)
         super().add_request(request)
 

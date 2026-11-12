@@ -703,6 +703,56 @@
     "evidence_location": "External engine-upgrade-20261111/continuation-candidate/server-evidence; local/server archive hashes verified",
     "acceptance_boundary": "Deployment and CPU preparation only. Rebuilt native binaries require fresh GPU qualification. No real engine construction, model export/restore, same-request HTTP continuation, GPU release, Transformers full-model/LoRA/training/embedding, TP2, graph, performance or final-image qualification."
   },
+  "continuation_prefill_repair_cpu_20261112": {
+    "status": "CPU repair passed; uncommitted candidate awaiting review; not deployed",
+    "source_base_commit": "2539ee0fd1e6e6b998776f500e6b6653c1595222",
+    "changed_file_sha256_raw_bytes": {
+      "sllm/backends/vllm_resume_scheduler.py": "f93732694e94894eb8f133db69161380e38d11066217701c7d4046c9f3711474",
+      "tests/baseline/test_vllm_resume_adapter.py": "31b87267fb683bd1bd5d69fb1a3d4e0788eaadfbed51d38b545ce9bc60a60a10",
+      "tests/baseline/fixtures/vllm-0.31.0-resume-source.json": "7f9f575cb8aa0884452ef2ec8ed793be52ea93aff5b872909dc2d898dcd9eac7"
+    },
+    "regression_before_fix": "6 failed, 8 passed, 24 deselected; two failures reproduce the upstream assertion for cache hit 3 > prompt length 2 in synchronous and asynchronous modes; four expose duplicate first-prefill stats",
+    "focused_after_fix": {"passed": 38, "failed": 0, "elapsed_seconds": 22.50},
+    "baseline_and_legacy_backend": {
+      "passed": 622,
+      "failed": 0,
+      "skipped": 21,
+      "elapsed_seconds": 110.42,
+      "skips": "Torch-dependent Store tests in the light environment; all 21 matched by classname and test name to passing cases in the fresh complementary CPU run below"
+    },
+    "fresh_tensor_and_transformers_cpu": {
+      "passed": 77,
+      "failed": 0,
+      "skipped": 0,
+      "elapsed_seconds": 28.88,
+      "environment": "Python 3.12.13, Torch 2.13.0+cpu, Transformers 5.17.0; CUDA_VISIBLE_DEVICES empty and Hugging Face offline mode",
+      "preflight": "Torch imports successfully, torch.version.cuda is None and CUDA is not initialized",
+      "scope": "Tensor layout, vLLM Store plugin, artifact and Transformers cache CPU tests; vLLM/native boundaries remain doubles",
+      "light_skip_reconciliation": "21 of 21 light-profile skipped cases matched to fresh passes; zero unresolved dependency skips",
+      "evidence_location": "External engine-upgrade-20261112/continuation-gpu/prefill-repair-torch-cpu.xml"
+    },
+    "source_verification": "Eleven pinned vLLM 0.31.0 source hashes checked; real Request and PrefillStats plus the exact Scheduler first-prefill branch execute with CPU doubles; no full engine run",
+    "static_checks": "Ruff 0.6.9 format and lint passed for both changed Python files; git diff --check passed",
+    "evidence_location": "External engine-upgrade-20261112/continuation-gpu/prefill-repair-cpu.xml",
+    "gpu_used": false,
+    "compatibility": "Nonempty restored output consumes first-prefill stats once; ordinary and zero-output requests retain upstream stats. No prompt extension, cache-hit truncation, fabricated preemption, request-budget or HTTP usage change.",
+    "acceptance_boundary": "CPU regression only. Server remains on c3af908; real same-request HTTP continuation, seeded multi-choice and GPU cleanup on the repaired candidate require new qualification."
+  },
+  "continuation_gpu_20261112_074958": {
+    "status": "Failed at target first-prefill accounting; no continuation qualification",
+    "commit": "c3af9088dc239dcfa6a317502bcfa7efd20daac6",
+    "server": "inspur-gpu-12 (192.168.5.188)",
+    "resource_request": "soft lock GPU 1,2",
+    "runtime_seconds": 211.01699781417847,
+    "failure": "vLLM 0.31.0 Scheduler.schedule line 1035 asserts num_computed_tokens <= request.num_prompt_tokens after restored output history enters target-local prefix-cache lookup",
+    "coverage": "Real Store/Ray/model initialization and greedy freeze/prepare/resume reached; three migrated HTTP requests failed; seeded multi-choice scenario not reached; no retry",
+    "resource_release": "soft unlock GPU 1,2",
+    "cleanup": "Verified no remaining task-owned PIDs or GPU compute processes; both GPUs returned to their measured 4 MiB idle baseline; platform reservation unchanged",
+    "evidence_location": "External engine-upgrade-20261112/continuation-gpu/evidence-20261112-074958",
+    "evidence_archive_sha256": "9ca976fd185bd7ca19aac5a321f808b631fcdc3b87100d524344dc13a6876bd6",
+    "archive_hash_verified": true,
+    "acceptance_boundary": "Failure and cleanup evidence only. The subsequent CPU repair requires a new reviewed deployment and separately approved GPU qualification."
+  },
   "continuation_cpu_candidate_20261111": {
     "status": "CPU candidate passed; no GPU continuation qualification",
     "source_base_commit": "119a1a82de5bf21e60e4dee836ef109d33587be8",

@@ -38,6 +38,14 @@ detokenizer/logprobs；Core 提交确认用于避开迟到注册竞态，不安�
 Worker extension 保持装载/导出职责，Store 产物不覆盖，引擎版本锁不改变。
 恢复适配的数值与资源释放资格仍须在修改后的代码身份上重新验证。
 
+带有已生成输出的恢复 choice 已完成原始 prompt 的首次预填充。准入时通过
+`Request.take_prefill_stats()` 消费目标新建请求的这项一次性统计状态，避免将
+历史输出重算再次作为首次 prompt 预填充计量。目标缓存命中仍可覆盖完整历史，
+不截断缓存命中、不扩展原 prompt 长度，也不伪造抢占次数。普通请求及尚无输出的
+恢复请求保留原统计路径；请求预算、HTTP usage 和目标缓存命中指标仍分别验证。
+CPU 回归须使用固定版本的真实 `PrefillStats`，执行 Scheduler 的首次预填充统计
+分支，覆盖同步/异步调度和命中长度超过原 prompt 的情况；不能仅检查历史追加。
+
 | 层 | 恢复责任 |
 | --- | --- |
 | frontend | 原 prompt、choice 映射、已提交输出、增量 detokenizer 的 token/text 偏移及 stop 缓冲、累计 logprobs、外部 request ID 与 usage；内部请求 ID 含迁移代次 |

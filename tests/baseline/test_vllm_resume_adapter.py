@@ -434,9 +434,16 @@ def test_zero_output_snapshot_keeps_all_choices_and_exact_budget(pinned):
     assert snapshot["sampling_params"]["max_tokens"] == 30
 
 
-def test_scheduler_uses_real_request_append_and_v2_prefill_boundary(
-    pinned, monkeypatch
-):
+@pytest.fixture
+def scheduler_types(pinned, monkeypatch):
+    stats = _source_module(
+        monkeypatch,
+        pinned.root,
+        "vllm/v1/metrics/stats.py",
+        "_pinned_prefill_stats",
+        ["PrefillStats"],
+        dict(dataclass=dataclass),
+    )
     request_module = _source_module(
         monkeypatch,
         pinned.root,
@@ -452,7 +459,7 @@ def test_scheduler_uses_real_request_append_and_v2_prefill_boundary(
             ),
             length_from_prompt_token_ids_or_embeds=lambda ids, embeds: len(ids),
             ConstantList=lambda value: value,
-            PrefillStats=lambda: None,
+            PrefillStats=stats.PrefillStats,
         ),
     )
 
@@ -486,6 +493,13 @@ def test_scheduler_uses_real_request_append_and_v2_prefill_boundary(
         sys.modules, "sllm.backends.vllm_resume_scheduler", raising=False
     )
     module = importlib.import_module("sllm.backends.vllm_resume_scheduler")
+    return request_module, module, Scheduler
+
+
+def test_scheduler_uses_real_request_append_and_v2_prefill_boundary(
+    pinned, scheduler_types
+):
+    request_module, module, Scheduler = scheduler_types
     for async_scheduling in [False, True]:
         config = types.SimpleNamespace(
             use_v2_model_runner=True,
@@ -847,3 +861,90 @@ async def test_resume_aggregates_choices_keeps_seeds_and_original_budgets(
     assert sorted(aborted) == ["epoch:choice:0", "epoch:choice:2"]
     assert not engine._sllm_resume_adapter["pending"]
     assert snapshot["sampling_params"]["n"] == 3
+
+
+@pytest.mark.parametrize("async_scheduling", [False, True])
+@pytest.mark.parametrize(
+    "history, cache_hit",
+    [
+        (None, 0),
+        (None, 1),
+        ([], 0),
+        ([], 1),
+        ([3, 4], 0),
+        ([3, 4], 1),
+        ([3, 4], 3),
+    ],
+)
+def test_resume_prefill_accounting_with_output_history_cache_hit(
+    pinned, scheduler_types, async_scheduling, history, cache_hit
+):
+    request_module, module, _ = scheduler_types
+    config = types.SimpleNamespace(
+        use_v2_model_runner=True,
+        scheduler_config=types.SimpleNamespace(
+            async_scheduling=async_scheduling
+        ),
+    )
+    params = pinned.sampling.SamplingParams(max_tokens=10, min_tokens=5)
+    if history is not None:
+        params.extra_args = {
+            adapter.RESUME_KEY: {
+                "schema_version": 1,
+                "output_token_ids": history,
+            }
+        }
+    request = request_module.Request("id", [1, 2], params, None)
+    first_prefill = request.prefill_stats
+    scheduler = module.ResumeScheduler(config)
+    scheduler.add_request(request)
+
+    # Execute the exact upstream first-prefill branch which failed on GPU.
+    # The supplied hit is a target-local KV lookup result, not source KV.
+    tree = ast.parse(
+        (pinned.root / "vllm/v1/core/sched/scheduler.py").read_text()
+    )
+    owner = next(
+        n
+        for n in tree.body
+        if isinstance(n, ast.ClassDef) and n.name == "Scheduler"
+    )
+    schedule = next(
+        n
+        for n in owner.body
+        if isinstance(n, ast.FunctionDef) and n.name == "schedule"
+    )
+    branches = [
+        n
+        for n in ast.walk(schedule)
+        if isinstance(n, ast.If)
+        and ast.unparse(n.test)
+        == "request.prefill_stats and request.num_preemptions <= 0"
+    ]
+    assert len(branches) == 1
+    block = ast.Module(body=branches, type_ignores=[])
+    namespace = dict(
+        request=request,
+        num_computed_tokens=cache_hit,
+        num_new_local_computed_tokens=cache_hit,
+        num_external_computed_tokens=0,
+    )
+    exec(
+        compile(
+            ast.fix_missing_locations(block), "pinned-prefill-branch", "exec"
+        ),
+        namespace,
+    )
+
+    assert request.prompt_token_ids == [1, 2]
+    assert request.output_token_ids == (history or [])
+    assert request.num_computed_tokens == request.num_preemptions == 0
+    assert request.max_tokens == 10 and params.min_tokens == 5
+    assert namespace["num_computed_tokens"] == cache_hit
+    if history:
+        assert request.take_prefill_stats() is None
+    else:
+        assert request.take_prefill_stats() is first_prefill
+        assert first_prefill.num_prompt_tokens == 2
+        assert first_prefill.num_cached_tokens == cache_hit
+        assert first_prefill.num_computed_tokens == 2 - cache_hit
