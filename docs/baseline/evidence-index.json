@@ -703,6 +703,27 @@
     "evidence_location": "External engine-upgrade-20261111/continuation-candidate/server-evidence; local/server archive hashes verified",
     "acceptance_boundary": "Deployment and CPU preparation only. Rebuilt native binaries require fresh GPU qualification. No real engine construction, model export/restore, same-request HTTP continuation, GPU release, Transformers full-model/LoRA/training/embedding, TP2, graph, performance or final-image qualification."
   },
+  "continuation_evidence_server_cpu_20261112": {
+    "status": "Complete-failure-evidence candidate deployed; CPU preflight passed; GPU diagnosis requires a new approved batch",
+    "commit": "3b8b8b89ab98206e6c84d606e781b1b504cd8267",
+    "server": "inspur-gpu-12 (192.168.5.188)",
+    "deployment_directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2-3b8b8b8-20261112/source",
+    "source_archive_sha256": "fb26778a73e8c56f6d91bbc9c9d974a683668da06e5c811b3f51b56cd36be79d",
+    "source_validation": "352 archive entries match committed Git blobs; checked again on the server after build and tests; installed main and native Store wheel payloads verified byte-for-byte",
+    "environment": "Independent Python 3.12.13 environment; 222 locked dependencies plus two project wheels; offline lock check and 224-package compatibility check passed",
+    "main_wheel_sha256": "be514f24c6cfa563998c34b21986b51c94312724998da9097da95051328fe5ed",
+    "store_wheel_sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
+    "store_reuse": "Native wheel reused after unchanged Store source and dependency lock were verified; no new native build or GPU qualification claimed",
+    "server_tests": {"passed": 651, "failed": 0, "skipped": 0, "elapsed_seconds": 43.364},
+    "additional_checks": "Eleven pinned vLLM source hashes; installed lazy preparation; native reader/writer imports; seven CPU writer boundary sizes; artifact integrity; CLI help and private gRPC/protobuf roundtrip",
+    "isolation": "Private offline network and device namespaces; no NVIDIA device nodes; CUDA_VISIBLE_DEVICES empty; CUDA uninitialized before and after checks",
+    "cleanup": "Task CPU unit inactive with MainPID=0 and no remaining owned processes; no GPU lock or unlock performed",
+    "gpu_entry": "Separate candidate-bound entry prepared; CPU compilation and missing-approval, wrong-GPU and expired-approval rejection checks passed; no valid GPU launch attempted",
+    "gpu_used": false,
+    "evidence_location": "External engine-upgrade-20261112/continuation-evidence-candidate/repair-server-evidence",
+    "evidence_archive_sha256": "e26bbd75373e7deef320c5be6080d781ebb25a7dc1e8ca63ecb7e228ba9e265b",
+    "acceptance_boundary": "Deployment and CPU readiness only. Cross-request GPU logprob differences remain unexplained; strict full-output equivalence and actual continuation qualification remain pending."
+  },
   "continuation_failure_evidence_cpu_20261112": {
     "status": "Failure-evidence repair passed CPU checks; uncommitted review candidate, not deployed; numerical mismatch unresolved",
     "source_base_commit": "b7f65c8",
