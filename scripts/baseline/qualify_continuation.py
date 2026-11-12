@@ -46,13 +46,13 @@ def validate_approval(config, environ, now, cgroup):
     validate_environment(config, environ)
 
 
-def runtime_passed(result):
+def runtime_passed(result, scenarios=SCENARIOS):
     from continuation_profile import runtime_verified
 
     cases = result.get("cases")
     return bool(
         not result.get("error")
-        and runtime_verified(result, SCENARIOS)
+        and runtime_verified(result, scenarios)
         and result.get("cleanup_completed") is True
         and not result.get("cleanup_errors")
         and result.get("transparent_continuation") is True
@@ -61,14 +61,14 @@ def runtime_passed(result):
         )
         and isinstance(cases, list)
         and cases
-        and {case.get("scenario") for case in cases} == set(SCENARIOS)
+        and {case.get("scenario") for case in cases} == set(scenarios)
         and all(
             any(
                 case.get("scenario") == scenario
                 and case.get("validation", {}).get("source_had_output") is True
                 for case in cases
             )
-            for scenario in SCENARIOS
+            for scenario in scenarios
         )
         and all(
             case.get("validated") is True
@@ -195,7 +195,7 @@ async def http_pump(client, body, label, stopped, attempts):
         index += 1
 
 
-async def exercise_model(config, output, result, root, metrics):
+async def exercise_model(config, output, result, root, metrics, *, suite=None):
     import httpx
     import qualify_migration as base
     import ray
@@ -285,7 +285,7 @@ async def exercise_model(config, output, result, root, metrics):
         router = ray.get_actor(model, namespace="models")
         scheduler = ray.get_actor("model_loading_scheduler")
         manager = ray.get_actor("store_manager")
-        for scenario in SCENARIOS:
+        for scenario in SCENARIOS if suite is None else suite.SCENARIOS:
             await exercise_scenario(
                 scenario,
                 config,
@@ -304,12 +304,23 @@ async def exercise_model(config, output, result, root, metrics):
                 find_handoff,
                 parse_events,
                 validate_case,
+                suite=suite,
+                tokenizer=tokenizer,
             )
         result["transparent_continuation"] = True
 
 
 async def record_numerical_runtime(
-    config, output, result, actor, scenario, role, node, cgroup
+    config,
+    output,
+    result,
+    actor,
+    scenario,
+    role,
+    node,
+    cgroup,
+    *,
+    result_name="continuation-result.json",
 ):
     from continuation_profile import selected, validate_worker_reports
     from qualify_service import write
@@ -327,7 +338,7 @@ async def record_numerical_runtime(
     result.setdefault("numerical_observations", []).append(record)
     try:
         record["workers"] = await actor.get_numerical_runtime.remote()
-        write(output / "continuation-result.json", result)
+        write(output / result_name, result)
         validate_worker_reports(
             record["workers"], record["expected_uuid"], cgroup
         )
@@ -336,7 +347,7 @@ async def record_numerical_runtime(
         record["error"] = str(error)
         raise
     finally:
-        write(output / "continuation-result.json", result)
+        write(output / result_name, result)
 
 
 async def exercise_scenario(
@@ -357,10 +368,17 @@ async def exercise_scenario(
     find_handoff,
     parse_events,
     validate_case,
+    *,
+    suite=None,
+    tokenizer=None,
 ):
     import ray
     from continuation_evidence import compare_reference_prefixes
     from qualify_service import write
+
+    result_name = (
+        "continuation-result.json" if suite is None else suite.RESULT_NAME
+    )
 
     async def routing():
         return await router.__ray_call__.remote(router_state)
@@ -382,35 +400,70 @@ async def exercise_scenario(
         "source",
         source_info["node"],
         source_identity["cgroup"],
-    )
-    params = dict(temperature=0, n=1)
-    if scenario == "seeded-multi":
-        params = dict(
-            temperature=0.7,
-            seed=17,
-            n=2,
-            min_tokens=32,
-            presence_penalty=0.2,
-            frequency_penalty=0.1,
-        )
-    body = dict(
-        model=model,
-        input_tokens=tokens,
-        max_tokens=384,
-        ignore_eos=True,
-        logprobs=5,
-        **params,
-    )
-    reference_id = f"d2-{scenario}-reference"
-    reference = await send_once(
-        client, {**body, "request_id": reference_id}, {}
-    )
-    reference_history = next(
-        item
-        for item in await source.__ray_call__.remote(backend_history)
-        if item["request_id"] == reference_id
+        result_name=result_name,
     )
     attempts, observations = {}, {}
+    scenario_evidence = {
+        "scenario": scenario,
+        "attempts": attempts,
+        "source": source_identity,
+        "source_instance": source_id,
+        "active_observations": observations,
+    }
+    result["scenarios"].append(scenario_evidence)
+
+    def save():
+        write(output / result_name, result)
+
+    try:
+        if suite is None:
+            params = dict(temperature=0, n=1)
+            if scenario == "seeded-multi":
+                params = dict(
+                    temperature=0.7,
+                    seed=17,
+                    n=2,
+                    min_tokens=32,
+                    presence_penalty=0.2,
+                    frequency_penalty=0.1,
+                )
+            body = dict(
+                model=model,
+                input_tokens=tokens,
+                max_tokens=384,
+                ignore_eos=True,
+                logprobs=5,
+                **params,
+            )
+            reference_id = f"d2-{scenario}-reference"
+            reference = await send_once(
+                client, {**body, "request_id": reference_id}, {}
+            )
+            reference_history = next(
+                item
+                for item in await source.__ray_call__.remote(backend_history)
+                if item["request_id"] == reference_id
+            )
+        else:
+            body, reference, reference_history = await suite.prepare_reference(
+                scenario,
+                model,
+                tokens,
+                tokenizer,
+                config,
+                source,
+                client,
+                scenario_evidence,
+                save,
+            )
+        scenario_evidence.update(
+            reference=reference, reference_history=reference_history
+        )
+        save()
+    except BaseException as error:
+        scenario_evidence["preparation_error"] = str(error)
+        save()
+        raise
     stopped = asyncio.Event()
     pumps = [
         asyncio.create_task(
@@ -421,16 +474,6 @@ async def exercise_scenario(
     allocation = None
     probe_released = False
     probe = f"qualification-continuation-{scenario}-{output.name}"
-    scenario_evidence = {
-        "scenario": scenario,
-        "attempts": attempts,
-        "source": source_identity,
-        "source_instance": source_id,
-        "reference": reference,
-        "reference_history": reference_history,
-        "active_observations": observations,
-    }
-    result["scenarios"].append(scenario_evidence)
 
     async def observe():
         for task in pumps:
@@ -466,7 +509,7 @@ async def exercise_scenario(
         return state
 
     try:
-        write(output / "continuation-result.json", result)
+        write(output / result_name, result)
         await base.wait_until(
             observe,
             lambda active: any(any(lengths) for lengths in active.values()),
@@ -480,10 +523,10 @@ async def exercise_scenario(
             if history["request_id"] in attempts
         ]
         scenario_evidence["source_prefix_history"] = prefixes
-        write(output / "continuation-result.json", result)
+        write(output / result_name, result)
         prefix_check = compare_reference_prefixes(prefixes, reference_history)
         scenario_evidence["reference_prefix_check"] = prefix_check
-        write(output / "continuation-result.json", result)
+        write(output / result_name, result)
         if not prefix_check["comparable"]:
             raise ValueError(
                 "Source prefix differs before migration: "
@@ -531,6 +574,7 @@ async def exercise_scenario(
             "target",
             state["ready"][target_id]["node"],
             target_identity["cgroup"],
+            result_name=result_name,
         )
         logs = base.read_run_logs(root, {})
         events = parse_events(logs)
@@ -567,7 +611,7 @@ async def exercise_scenario(
             target_instance=target_id,
             final_history=history,
         )
-        write(output / "continuation-result.json", result)
+        write(output / result_name, result)
         resumed_ids = {event["request_id"] for event in resumed}
         if not source_snapshots or not set(source_snapshots) <= resumed_ids:
             raise RuntimeError(
@@ -601,7 +645,7 @@ async def exercise_scenario(
                     "type": type(exc).__name__,
                     "message": str(exc),
                 }
-                write(output / "continuation-result.json", result)
+                write(output / result_name, result)
                 raise
             validated.append(
                 {
@@ -611,6 +655,16 @@ async def exercise_scenario(
                     "validation": report,
                 }
             )
+        if suite is not None:
+            try:
+                scenario_evidence["stopping_validation"] = (
+                    suite.validate_scenario(scenario_evidence, tokenizer)
+                )
+            except BaseException as error:
+                scenario_evidence["stopping_error"] = str(error)
+                raise
+            finally:
+                save()
         result["cases"].extend(validated)
         settled = await base.wait_until(
             routing,
@@ -698,14 +752,15 @@ async def exercise_scenario(
                 await scheduler.deallocate_resource.remote(
                     probe, f"continuation-{scenario}", {"num_gpus": 1}
                 )
-        write(output / "continuation-result.json", result)
+        write(output / result_name, result)
 
 
-def main():
+def main(*, suite=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--approval", required=True)
     config = json.loads(Path(parser.parse_args().approval).read_text())
-    validate_approval(
+    validator = validate_approval if suite is None else suite.validate_approval
+    validator(
         config, os.environ, time.time(), Path("/proc/self/cgroup").read_text()
     )
     from continuation_profile import worker_environment
@@ -730,9 +785,17 @@ def main():
             "external runner owns GPU/process release proof",
         ],
     }
-    path = output / "continuation-result.json"
+    if suite is not None:
+        result["suite"] = suite.SCOPE
+        result["limitations"] = list(suite.LIMITATIONS)
+    path = output / (
+        "continuation-result.json" if suite is None else suite.RESULT_NAME
+    )
     with path.open("x", encoding="utf-8") as stream:
         json.dump(result, stream, indent=2)
+
+    async def exercise(config, output, result, root, metrics):
+        await exercise_model(config, output, result, root, metrics, suite=suite)
 
     async def bounded():
         try:
@@ -741,10 +804,14 @@ def main():
                     config,
                     output,
                     result,
-                    exercise=exercise_model,
-                    pass_check=runtime_passed,
+                    exercise=exercise,
+                    pass_check=runtime_passed
+                    if suite is None
+                    else suite.runtime_passed,
                     result_name=path.name,
-                    namespace="stage-d2-continuation",
+                    namespace="stage-d2-continuation"
+                    if suite is None
+                    else suite.SCOPE,
                     worker_env=worker_environment(config),
                 ),
                 config["deadline_epoch"] - time.time() - 120,

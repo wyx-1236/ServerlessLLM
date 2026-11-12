@@ -359,7 +359,7 @@ class Flow:
             self.evidence.MARKER + json.dumps(event) for event in self.events
         )
 
-    async def run(self, scenario, result, config=None):
+    async def run(self, scenario, result, config=None, **options):
         return await self.module.exercise_scenario(
             scenario,
             config or {},
@@ -378,6 +378,7 @@ class Flow:
             self.evidence.find_handoff,
             self.evidence.parse_events,
             self.evidence.validate_case,
+            **options,
         )
 
 

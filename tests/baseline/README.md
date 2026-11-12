@@ -251,6 +251,16 @@ zero-GPU Ray actor using the production asynchronous mixin. It checks completed
 Worker reports and persisted RPC failures, and reproduces why an async callback
 through Ray 2.48.0's synchronous `__ray_call__` cannot be used for this boundary.
 
+`test_stopping_evidence.py` and `test_stopping_qualification.py` cover the separate
+`qualify_stopping.py` entry: bounded EOS probes, independent controls, actual first
+stop-string matching, strict cross-freeze eligibility, model EOS provenance,
+scope isolation, all three HTTP/actor flow scenarios, failed preparation, missing
+or altered evidence, boundary failure, and cancellation with late allocation.
+The entry imports without Ray/Torch/vLLM/Transformers. Flow tests use controlled
+tokens and actors; they do not qualify real tokenizer or GPU sampling behavior.
+Its approval scope is `stage-d2-stopping`, its run prefix is `d2s`, and its output
+is `stopping-result.json`. The original D2 defaults and result name are unchanged.
+
 `"numerical_profile": "batch-invariant-v1"` in the approval file requires the
 external runner to set `VLLM_BATCH_INVARIANT=1` before starting Python. The entry
 pins FLASH_ATTN and records actual source/target Worker state in
