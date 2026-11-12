@@ -1,4 +1,132 @@
 {
+  "stopping_tokenizer_repair_cpu_20261113": {
+    "status": "EOS tokenizer serialization repair and isolated real-tokenizer tests passed local and server CPU checks; no GPU use in this repair",
+    "commit": "aaf4fa58554b046a49e7d964f93b7131e335fcb3",
+    "implementation_commit": "415724f61c111acf36a8468985432e75b7d923e8",
+    "plan": "migration-stopping-qualification-plan.md",
+    "repair": "prepare_reference explicitly sets return_dict=False and validates flat non-negative integer prompt IDs before saving them. Invalid return values retain serializable failure evidence and cannot start HTTP traffic. Real tokenizer CPU tests run in child processes to preserve Ray import isolation.",
+    "local_cpu": {
+      "light_passed": 749,
+      "light_skipped": 23,
+      "complementary_passed": 79,
+      "all_skips_covered": true,
+      "new_tests": 6,
+      "gpu_used": false,
+      "focused_passed": 121,
+      "regression_before_fix": "2 real-tokenizer cases failed with the same BatchEncoding JSON error; 4 malformed-token cases failed before early validation was added",
+      "xml_sha256": {
+        "light.xml": "54e53a9260bb715f3ef28c124a72cb224d66cebd47c692dc64c30aca13bb6986",
+        "torch.xml": "6b00f5655777e5d5efedcd0eb4f98f2e86872b994f367666e8577a53209e8148"
+      }
+    },
+    "local_cpu_identity": "Full light/complementary runs cover 415724f; the final aaf4fa5 change only isolates the real-tokenizer test. Both isolated cases passed again locally, and the complete final candidate passed all server CPU tests below.",
+    "final_local_isolated_tokenizer": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "xml_sha256": "f8270e2203eb531b8ccccc48eb51670bbd03c45f33a675a471066ad4743235cb"
+    },
+    "static_checks": "Ruff 0.6.9 format/lint and git diff --check passed",
+    "server": "inspur-gpu-12 (192.168.5.188)",
+    "deployment": {
+      "commit": "aaf4fa58554b046a49e7d964f93b7131e335fcb3",
+      "archive_sha256": "96dd2d9a61e1c25ed6f8ef911ca459a55610750dc5dea89bac2d07f7373ce935",
+      "tracked_file_count": 363,
+      "directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2S-aaf4fa5-20261113/source",
+      "all_tracked_files_match_commit": true
+    },
+    "server_tests": {
+      "tests": 772,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "server_test_seconds": 60.27,
+    "server_checks": {
+      "gpu_devices_hidden": true,
+      "isolated_environment": true,
+      "python_version": true,
+      "pinned_versions": true,
+      "installed_vllm_source": true,
+      "installed-lazy-preparation": true,
+      "cuda_uninitialized_before": true,
+      "native_modules_installed": true,
+      "native_writer": true,
+      "existing_artifact_integrity": true,
+      "store-cli-help": true,
+      "store-cli-save-help": true,
+      "sllm-cli-help": true,
+      "server-cpu-tests": true,
+      "server_contracts_no_skips": true,
+      "cuda_uninitialized_after": true
+    },
+    "versions": {
+      "torch": "2.13.0",
+      "vllm": "0.31.0",
+      "transformers": "5.17.0",
+      "ray": "2.48.0",
+      "msgspec": "0.22.0"
+    },
+    "packages": {
+      "serverless_llm-0.8.0-py3-none-any.whl": {
+        "sha256": "81cd6c3a46bc0f15f3c346a1659ae4f1c8d45bc84a4656f59cb2a2c8a2ceea3a",
+        "native_sha256": {}
+      },
+      "serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl": {
+        "sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
+        "native_sha256": {
+          "sllm_store/_C.cpython-312-x86_64-linux-gnu.so": "4354f73638a2300e7f487dee9816a50efaa8c1d1e179ebaaa34044f121cd16a6",
+          "sllm_store/_checkpoint_store.cpython-312-x86_64-linux-gnu.so": "f93db0d14ca263ae49c74064685c877bdf0bf9ba860ee1f528f3316e78577ef1",
+          "sllm_store/libglog.so": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
+          "sllm_store/libglog.so.0.6.0": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
+          "sllm_store/libglog.so.1": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414"
+        }
+      }
+    },
+    "actual_qwen_tokenizer": {
+      "passed": true,
+      "prompt_token_counts": [
+        30,
+        29,
+        25
+      ],
+      "default_return_type": "BatchEncoding",
+      "explicit_return_type": "list",
+      "entry_prompt_ids_match": true,
+      "failure_evidence_saved": true,
+      "tokenizer_file_sha256": {
+        "tokenizer.json": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+        "preparation.json": "3cb94a4c2ef5fbd1e225fb66008262066ce9d91deb6116e9c9a4a5d9c398b5b8",
+        "merges.txt": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+        "vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+        "tokenizer_config.json": "d5d09f07b48c3086c508b30d1c9114bd1189145b74e982a265350c923acd8101",
+        "generation_config.json": "2325da0f15bb848e018c5ae071b7943332e9f871d6b60e2ed22ca97d4cb993d2",
+        "source.json": "bf49eb1b00d7342f728b55b8d3068f42f6a1f338441828c70063fe6c70b078e3",
+        "config.json": "660db3b73d788119c04535e48cf9be5f55bc3100841a718637ae695b442f27dd"
+      },
+      "scope": "Actual model tokenizer and preparation only; no model weights, HTTP, Ray, vLLM engine or GPU generation"
+    },
+    "isolation": "Private offline network and device namespaces without NVIDIA nodes; CUDA_VISIBLE_DEVICES empty; CUDA uninitialized before and after checks",
+    "cleanup": {
+      "sllm-d2-cpu-repair-aaf4fa5.service": {
+        "MainPID": "0",
+        "ControlGroup": "",
+        "ActiveState": "inactive"
+      }
+    },
+    "remaining_owned_pids": [],
+    "gpu_used": false,
+    "gpu_resource_actions": "No GPU lock or unlock performed in this repair",
+    "recovered_failures": [
+      "Prior 415724f deployment had 771 passes and one Ray import-isolation failure caused by the new real tokenizer test importing Torch in the parent. aaf4fa5 isolates that test in a CPU child process; previous source and logs retained."
+    ],
+    "previous_cpu_cleanup": "415724f CPU unit inactive, MainPID=0 and no remaining owned PIDs; failure logs retained",
+    "compatibility": "Model prompts, template thinking option, request parameters, stop rules, strict comparisons and migration behavior unchanged. No sllm, sllm_store, dependency lock or ordinary service changes.",
+    "evidence_location": "External engine-upgrade-20261113/stopping-tokenizer-cpu and stopping-tokenizer-deployment/repair-server-evidence",
+    "evidence_archive_sha256": "f8e3ba5c9126d89ceb7a2b99ed6e3e30c47df7a7f4199817f628b214c4e4e990",
+    "archive_hash_verified": true,
+    "acceptance_boundary": "Repairs CPU preparation and evidence persistence only. EOS and stop-string migration GPU qualification remains pending; no EOS sampling, GPU min-token masking, cross-freeze stopping or final stage-D acceptance claimed."
+  },
   "stopping_gpu_20261112_133644": {
     "status": "Failed before EOS probe HTTP request; no stopping continuation qualification",
     "commit": "07f11352976f276b39d0b744f05c7751f6d12f0b",

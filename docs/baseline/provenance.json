@@ -1,10 +1,10 @@
 {
   "stopping_cpu_candidate": {
-    "commit": "07f11352976f276b39d0b744f05c7751f6d12f0b",
-    "status": "Stopping qualification entry implemented and CPU verified; real GPU qualification pending separate approval",
+    "commit": "aaf4fa58554b046a49e7d964f93b7131e335fcb3",
+    "status": "Tokenizer preparation repaired; complete isolated server CPU checks and actual Qwen tokenizer probe passed; real stopping GPU qualification pending",
     "plan": "migration-stopping-qualification-plan.md",
-    "evidence": "evidence-index.json#stopping_entry_cpu_20261112",
-    "server_deployment_directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2S-07f1135-20261112/source",
+    "evidence": "evidence-index.json#stopping_tokenizer_repair_cpu_20261113",
+    "server_deployment_directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2S-aaf4fa5-20261113/source",
     "ordinary_defaults_changed": false,
     "gpu_used": false,
     "qualification_remaining": "EOS and include/exclude stop-string cross-freeze behavior require new bounded GPU execution; stage D remains incomplete"
