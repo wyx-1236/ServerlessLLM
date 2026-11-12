@@ -1,4 +1,138 @@
 {
+  "stopping_entry_cpu_20261112": {
+    "status": "Approved stopping entry and first-match correction implemented; local and isolated server CPU checks passed; GPU qualification not run",
+    "commit": "07f11352976f276b39d0b744f05c7751f6d12f0b",
+    "plan": "migration-stopping-qualification-plan.md",
+    "scope": "stage-d2-stopping; EOS, stop-string-exclude and stop-string-include; explicit batch-invariant-v1 only",
+    "entry": "scripts/baseline/qualify_stopping.py",
+    "selection_correction": "Keep decoded token slice 32:320 as stop string, record actual first match and require stop_start < frozen raw text length < stop_end. Prior real output selected chars 238:2377 but first matched at chars 30:2169; user explicitly approved this correction and CPU checks.",
+    "local_cpu": {
+      "light_passed": 745,
+      "light_skipped": 21,
+      "complementary_passed": 77,
+      "all_skips_covered": true,
+      "new_tests": 28,
+      "gpu_used": false,
+      "source_files": 18,
+      "xml_sha256": {
+        "light.xml": "24f0aa38fcfd9f2295a16c1dcaf26c3e3a98520ce04134d07b8d7cd0e762f0d5",
+        "torch.xml": "3452760014ade0178840d77eccfc5a3616f9b2419c5e5eddc65c816a6dc52699"
+      }
+    },
+    "coverage": "28 new tests: pure stopping evidence, three HTTP/actor flow scenarios, strict result re-audit, bounded probe exhaustion, boundary failure, cancellation and cleanup, scope separation, EOS-source corruption rejection, repeated-output first-match regression and dependency-free imports",
+    "static_checks": "Ruff 0.6.9 lint/format and git diff --check passed",
+    "server": "inspur-gpu-12 (192.168.5.188)",
+    "deployment": {
+      "commit": "07f11352976f276b39d0b744f05c7751f6d12f0b",
+      "archive_sha256": "4bfbbfc41a49399aac50e259bb77a702d236e2e2c94e84e2fd0b28785fe2fd58",
+      "tracked_file_count": 362,
+      "directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2S-07f1135-20261112/source",
+      "all_tracked_files_match_commit": true
+    },
+    "server_tests": {
+      "tests": 766,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "server_test_seconds": 54.691,
+    "server_checks": {
+      "gpu_devices_hidden": true,
+      "isolated_environment": true,
+      "python_version": true,
+      "pinned_versions": true,
+      "installed_vllm_source": true,
+      "installed-lazy-preparation": true,
+      "cuda_uninitialized_before": true,
+      "native_modules_installed": true,
+      "native_writer": true,
+      "existing_artifact_integrity": true,
+      "store-cli-help": true,
+      "store-cli-save-help": true,
+      "sllm-cli-help": true,
+      "server-cpu-tests": true,
+      "server_contracts_no_skips": true,
+      "cuda_uninitialized_after": true
+    },
+    "versions": {
+      "torch": "2.13.0",
+      "vllm": "0.31.0",
+      "transformers": "5.17.0",
+      "ray": "2.48.0",
+      "msgspec": "0.22.0"
+    },
+    "packages": {
+      "serverless_llm-0.8.0-py3-none-any.whl": {
+        "sha256": "5d7f7e9ec63aa3ed4359fd438f9211f580e1d0e34a33870bd31e5ddafc5be0a4",
+        "native_sha256": {}
+      },
+      "serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl": {
+        "sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
+        "native_sha256": {
+          "sllm_store/_C.cpython-312-x86_64-linux-gnu.so": "4354f73638a2300e7f487dee9816a50efaa8c1d1e179ebaaa34044f121cd16a6",
+          "sllm_store/_checkpoint_store.cpython-312-x86_64-linux-gnu.so": "f93db0d14ca263ae49c74064685c877bdf0bf9ba860ee1f528f3316e78577ef1",
+          "sllm_store/libglog.so": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
+          "sllm_store/libglog.so.0.6.0": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
+          "sllm_store/libglog.so.1": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414"
+        }
+      }
+    },
+    "store_reuse": "Reused verified native Store wheel after confirming Store source and uv.lock unchanged; no fresh GPU qualification inferred",
+    "runtime_probe": {
+      "passed": true,
+      "gpu_used": false,
+      "cuda_initialized": false,
+      "private_grpc_protobuf_roundtrip": true,
+      "native_writer_module": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2S-07f1135-20261112/source/.venv/lib/python3.12/site-packages/sllm_store/_C.cpython-312-x86_64-linux-gnu.so",
+      "native_reader_module": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2S-07f1135-20261112/source/.venv/lib/python3.12/site-packages/sllm_store/_checkpoint_store.cpython-312-x86_64-linux-gnu.so",
+      "installed_plugin_entry_point": true,
+      "torch_runtime_version": "2.13.0+cu130"
+    },
+    "isolation": "Private offline network and device namespaces without NVIDIA nodes; CUDA_VISIBLE_DEVICES empty; CUDA uninitialized before and after CPU checks",
+    "cleanup": {
+      "sllm-d2-cpu-repair-07f1135.service": {
+        "MainPID": "0",
+        "ControlGroup": "",
+        "ActiveState": "inactive"
+      }
+    },
+    "remaining_owned_pids": [],
+    "gpu_used": false,
+    "gpu_resource_actions": "No GPU lock or unlock performed",
+    "manual_entry_cpu_checks": {
+      "missing_approval": {
+        "returncode": 2,
+        "error": "launch-gpu-migration.py: error: the following arguments are required: --human-approved, --approval-anchor-utc, --physical-gpu-indices, --gpu-uuids"
+      },
+      "wrong_gpu": {
+        "returncode": 1,
+        "error": "AssertionError: This approval covers GPU 1,2 only"
+      },
+      "expired": {
+        "returncode": 1,
+        "error": "AssertionError: The 30-minute D2 approval has expired"
+      },
+      "commit": "07f11352976f276b39d0b744f05c7751f6d12f0b",
+      "gpu_used": false,
+      "scope": "stage-d2-stopping",
+      "valid_launch_executed": false,
+      "entry_sha256": {
+        "gpu-migration-batch.py": "f0f5fc14fa217b3469e0a2a1ad57565c2bd031ab476d615c682908ba19e5bbc0",
+        "launch-gpu-migration.py": "990ee244ac67ee7f11fce11165dfd87d3c0b75aae92c1042e8baa3faafa49613",
+        "release-batch.py": "7c1f43dcbad9b26c3ba6e6cd1d207c2ba3a8b357c0c4dbc5f0f078ce3129f008"
+      },
+      "large_json_archive_check": {
+        "passed": true,
+        "bytes": 22020112,
+        "archive_sha256": "7bff4fba7d223e12ab1e0688c68b530e81c3becf50ef52e3f3915441228fdd21"
+      }
+    },
+    "compatibility": "No changes to sllm, sllm_store, uv.lock or pyproject.toml since qualified executable 6938fe1. Existing continuation CLI, scenarios, parameters and strict checks retain defaults; optional suite injection shares lifecycle. Ordinary service behavior unchanged.",
+    "evidence_location": "External engine-upgrade-20261112/stopping-entry-cpu, stopping-deployment/repair-server-evidence and stopping-gpu-manual",
+    "evidence_archive_sha256": "6c97a69ac3322e723e25923976055268c52f383aa49901fb529f03ce673cdfcd",
+    "archive_hash_verified": true,
+    "acceptance_boundary": "CPU readiness only. Actual tokenizer/model EOS sampling, min-token masking, cross-freeze stop execution and full HTTP GPU continuation in these three scenarios remain unqualified. Existing greedy/seeded-multi GPU evidence does not qualify this suite. No TP2, fault-continuation, model matrix, performance or final-image acceptance."
+  },
   "schema_version": 1,
   "continuation_stopping_cpu_20261112": {
     "status": "CPU stopping boundary matrix passed; no new GPU qualification",
