@@ -34,6 +34,7 @@ from sllm.backends import vllm_compat
 from sllm.backends import vllm_resume_adapter as resume_adapter
 from sllm.backends.backend_utils import BackendStatus, SllmBackend
 from sllm.backends.vllm_migration import VllmMigration
+from sllm.backends.vllm_qualification import NumericalQualificationMixin
 
 logger = logging.getLogger("ray")
 
@@ -127,7 +128,7 @@ class LLMEngineStatusDict:
             return len(self.status_dict)
 
 
-class VllmBackend(VllmMigration, SllmBackend):
+class VllmBackend(NumericalQualificationMixin, VllmMigration, SllmBackend):
     def __init__(
         self, model: str, backend_config: Optional[Dict[str, Any]] = None
     ):

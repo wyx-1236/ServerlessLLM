@@ -308,12 +308,6 @@ async def exercise_model(config, output, result, root, metrics):
         result["transparent_continuation"] = True
 
 
-async def backend_numerical_runtime(actor):
-    return await actor.engine.collective_rpc(
-        "sllm_numerical_runtime", timeout=30
-    )
-
-
 async def record_numerical_runtime(
     config, output, result, actor, scenario, role, node, cgroup
 ):
@@ -332,9 +326,7 @@ async def record_numerical_runtime(
     }
     result.setdefault("numerical_observations", []).append(record)
     try:
-        record["workers"] = await actor.__ray_call__.remote(
-            backend_numerical_runtime
-        )
+        record["workers"] = await actor.get_numerical_runtime.remote()
         write(output / "continuation-result.json", result)
         validate_worker_reports(
             record["workers"], record["expected_uuid"], cgroup

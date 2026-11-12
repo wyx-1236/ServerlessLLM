@@ -9,6 +9,14 @@ import sys
 from pathlib import Path
 
 
+class NumericalQualificationMixin:
+    async def get_numerical_runtime(self):
+        """Await Worker diagnostics inside Ray's asynchronous actor dispatch."""
+        return await self.engine.collective_rpc(
+            "sllm_numerical_runtime", timeout=30
+        )
+
+
 class NumericalQualificationWorker:
     def sllm_numerical_runtime(self):
         torch = sys.modules.get("torch")

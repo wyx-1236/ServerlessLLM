@@ -238,6 +238,11 @@ The manual `qualify_continuation.py` entry has separate CPU tests:
   substitutes, checking operation registration rather than GPU kernel math.
 
 For a separately approved D2 batch, selecting
+`test_continuation_ray_cpu.py` runs the numerical diagnostic through a real
+zero-GPU Ray actor using the production asynchronous mixin. It checks completed
+Worker reports and persisted RPC failures, and reproduces why an async callback
+through Ray 2.48.0's synchronous `__ray_call__` cannot be used for this boundary.
+
 `"numerical_profile": "batch-invariant-v1"` in the approval file requires the
 external runner to set `VLLM_BATCH_INVARIANT=1` before starting Python. The entry
 pins FLASH_ATTN and records actual source/target Worker state in

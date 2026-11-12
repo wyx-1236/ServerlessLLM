@@ -11,6 +11,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from sllm.backends.vllm_qualification import NumericalQualificationMixin
+
 SCRIPTS = Path(__file__).resolve().parents[2] / "scripts" / "baseline"
 
 
@@ -30,12 +32,21 @@ class Actor:
         self.world, self.kind = world, kind
         self.__dict__.update(state)
         self.__ray_call__ = SimpleNamespace(remote=self.call)
+        self.get_numerical_runtime = SimpleNamespace(remote=self.numerical)
+
+    async def numerical(self):
+        async def collective_rpc(method, *, timeout):
+            assert method == "sllm_numerical_runtime" and timeout == 30
+            await asyncio.sleep(0)
+            return copy.deepcopy(self.world.numerical_reports[self.kind])
+
+        backend = SimpleNamespace(
+            engine=SimpleNamespace(collective_rpc=collective_rpc)
+        )
+        return await NumericalQualificationMixin.get_numerical_runtime(backend)
 
     async def call(self, function, *args):
         world = self.world
-        if function is world.module.backend_numerical_runtime:
-            assert self.kind in {"source", "target"}
-            return copy.deepcopy(world.numerical_reports[self.kind])
         if self.kind == "source" and world.migrated:
             raise ActorGone("Source actor has retired")
         if function is world.base.actor_identity:

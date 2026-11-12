@@ -217,6 +217,8 @@ def test_numerical_success_requires_all_four_valid_worker_observations(
 
 @pytest.mark.asyncio
 async def test_numerical_inspection_uses_pinned_named_worker_rpc(qualification):
+    from sllm.backends.vllm_qualification import NumericalQualificationMixin
+
     calls = []
 
     async def collective_rpc(method, **kwargs):
@@ -226,7 +228,7 @@ async def test_numerical_inspection_uses_pinned_named_worker_rpc(qualification):
     actor = SimpleNamespace(
         engine=SimpleNamespace(collective_rpc=collective_rpc)
     )
-    assert await qualification.backend_numerical_runtime(actor) == [
+    assert await NumericalQualificationMixin.get_numerical_runtime(actor) == [
         {"worker": "observed"}
     ]
     assert calls == [("sllm_numerical_runtime", {"timeout": 30})]
