@@ -140,10 +140,13 @@ def validate_approval(
         )
 
 
-def worker_environment(uuid, directory):
+def worker_environment(uuid, directory, *, extra_env=None):
+    extra_env = extra_env or {}
+    if extra_env and extra_env != {"VLLM_BATCH_INVARIANT": "1"}:
+        raise ValueError("Unsupported qualification worker environment")
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=False)
-    return {"CUDA_VISIBLE_DEVICES": uuid, "TMPDIR": str(directory)}
+    return {"CUDA_VISIBLE_DEVICES": uuid, "TMPDIR": str(directory), **extra_env}
 
 
 @contextlib.contextmanager
@@ -158,6 +161,24 @@ def parent_environment(values):
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
+
+
+def add_worker_nodes(cluster, uuids, root, common, *, extra_env=None):
+    environments = []
+    for index, uuid in enumerate(uuids):
+        env = worker_environment(
+            uuid, root / f"worker-{index}", extra_env=extra_env
+        )
+        environments.append(env)
+        with parent_environment(env):
+            cluster.add_node(
+                num_cpus=2,
+                num_gpus=1,
+                resources={"worker_node": 1, f"worker_id_{index}": 1},
+                env_vars=env,
+                **common,
+            )
+    return environments
 
 
 def trace_pairs(text, source, target):
@@ -868,6 +889,7 @@ async def qualify(
     pass_check=None,
     result_name="migration-result.json",
     namespace="stage-d1",
+    worker_env=None,
 ):
     # Set the multiprocess directory before importing vLLM/Prometheus anywhere.
     metrics = output / "prometheus"
@@ -949,18 +971,9 @@ async def qualify(
             temp_dir=str(root / "ray"),
             **common,
         )
-        environments = []
-        for index, uuid in enumerate(config["gpu_uuids"]):
-            env = worker_environment(uuid, root / f"worker-{index}")
-            environments.append(env)
-            with parent_environment(env):
-                cluster.add_node(
-                    num_cpus=2,
-                    num_gpus=1,
-                    resources={"worker_node": 1, f"worker_id_{index}": 1},
-                    env_vars=env,
-                    **common,
-                )
+        environments = add_worker_nodes(
+            cluster, config["gpu_uuids"], root, common, extra_env=worker_env
+        )
         ray.init(
             address=cluster.address,
             namespace=namespace + "-" + output.name,

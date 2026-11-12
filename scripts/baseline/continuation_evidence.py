@@ -63,6 +63,50 @@ def _json_object(pairs):
     return result
 
 
+def compare_reference_prefixes(histories, reference):
+    """Reject an already divergent strict control before requesting migration.
+
+    This is a necessary prefix check, not proof of batch invariance. Text can
+    still be buffered during decoding; compare committed IDs and logprob rows.
+    Full text, termination, usage and history checks remain in validate_case.
+    """
+    reference = _canonical(reference)
+    controls = {item["index"]: item for item in reference["choices"]}
+    checked = 0
+    for history in _canonical(histories):
+        _require(
+            history["prompt_token_ids"] == reference["prompt_token_ids"],
+            "Source/reference prompt mismatch",
+        )
+        for choice in history["choices"]:
+            count = len(choice["token_ids"])
+            if not count:
+                continue
+            _require(choice["index"] in controls, "Missing reference choice")
+            control = controls[choice["index"]]
+            _require(
+                isinstance(choice["logprobs"], list)
+                and len(choice["logprobs"]) == count
+                and isinstance(control["logprobs"], list),
+                "Missing source/reference logprobs",
+            )
+            checked += count
+            for field in ("token_ids", "logprobs"):
+                difference = _first_difference(
+                    choice[field], control[field][:count], (field,)
+                )
+                if difference is not None:
+                    return {
+                        "comparable": False,
+                        "checked_tokens": checked,
+                        "request_id": history["request_id"],
+                        "choice_index": choice["index"],
+                        "difference": difference,
+                    }
+    _require(checked > 0, "No generated source prefix to compare")
+    return {"comparable": True, "checked_tokens": checked, "difference": None}
+
+
 def _requests(record):
     requests = record.get("requests")
     _require(isinstance(requests, list), "Missing batch snapshots")

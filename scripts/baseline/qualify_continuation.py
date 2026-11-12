@@ -32,6 +32,7 @@ REQUIRED_CHECKS = (
 
 
 def validate_approval(config, environ, now, cgroup):
+    from continuation_profile import validate_environment
     from qualify_migration import validate_approval as validate
 
     validate(
@@ -42,12 +43,16 @@ def validate_approval(config, environ, now, cgroup):
         scope="stage-d2-continuation",
         run_prefix="d2",
     )
+    validate_environment(config, environ)
 
 
 def runtime_passed(result):
+    from continuation_profile import runtime_verified
+
     cases = result.get("cases")
     return bool(
         not result.get("error")
+        and runtime_verified(result, SCENARIOS)
         and result.get("cleanup_completed") is True
         and not result.get("cleanup_errors")
         and result.get("transparent_continuation") is True
@@ -94,8 +99,15 @@ def _logprobs(rows):
     ]
 
 
-def backend_history(actor):
+def backend_history(actor, *, include_active=False):
     """Read every choice without modifying engine or request state."""
+    history = dict(actor.request_history)
+    if include_active:
+        history.update(
+            (key, record["output"])
+            for key, record in actor.active_requests.items()
+            if record["output"] is not None
+        )
     return [
         {
             "request_id": request_id,
@@ -113,9 +125,14 @@ def backend_history(actor):
                 for choice in output.outputs
             ],
         }
-        for request_id, output in actor.request_history.items()
+        for request_id, output in history.items()
         if output is not None
     ]
+
+
+def backend_source_prefixes(actor):
+    # Include requests that completed between the observation and this read.
+    return backend_history(actor, include_active=True)
 
 
 def backend_active(actor):
@@ -183,6 +200,7 @@ async def exercise_model(config, output, result, root, metrics):
     import qualify_migration as base
     import ray
     from continuation_evidence import find_handoff, parse_events, validate_case
+    from continuation_profile import backend_overrides
     from prometheus_client.mmap_dict import MmapedDict
     from qualify_service import write
     from transformers import AutoTokenizer
@@ -230,6 +248,7 @@ async def exercise_model(config, output, result, root, metrics):
             trace_debug=True,
             disable_log_stats=False,
             model_loader_extra_config={"store_address": "127.0.0.1:8073"},
+            **backend_overrides(config),
         ),
         auto_scaling_config=dict(
             metric="concurrency",
@@ -289,6 +308,45 @@ async def exercise_model(config, output, result, root, metrics):
         result["transparent_continuation"] = True
 
 
+async def backend_numerical_runtime(actor):
+    return await actor.engine.collective_rpc(
+        "sllm_numerical_runtime", timeout=30
+    )
+
+
+async def record_numerical_runtime(
+    config, output, result, actor, scenario, role, node, cgroup
+):
+    from continuation_profile import selected, validate_worker_reports
+    from qualify_service import write
+
+    if not selected(config):
+        return
+    record = {
+        "scenario": scenario,
+        "role": role,
+        "node": str(node),
+        "validated": False,
+        "expected_uuid": config["gpu_uuids"][int(node)],
+        "expected_cgroup": cgroup,
+    }
+    result.setdefault("numerical_observations", []).append(record)
+    try:
+        record["workers"] = await actor.__ray_call__.remote(
+            backend_numerical_runtime
+        )
+        write(output / "continuation-result.json", result)
+        validate_worker_reports(
+            record["workers"], record["expected_uuid"], cgroup
+        )
+        record["validated"] = True
+    except BaseException as error:
+        record["error"] = str(error)
+        raise
+    finally:
+        write(output / "continuation-result.json", result)
+
+
 async def exercise_scenario(
     scenario,
     config,
@@ -309,6 +367,7 @@ async def exercise_scenario(
     validate_case,
 ):
     import ray
+    from continuation_evidence import compare_reference_prefixes
     from qualify_service import write
 
     async def routing():
@@ -322,6 +381,16 @@ async def exercise_scenario(
     source_identity = await source.__ray_call__.remote(base.actor_identity)
     if source_identity["cgroup"] != Path("/proc/self/cgroup").read_text():
         raise RuntimeError("Source is not in the owned cgroup")
+    await record_numerical_runtime(
+        config,
+        output,
+        result,
+        source,
+        scenario,
+        "source",
+        source_info["node"],
+        source_identity["cgroup"],
+    )
     params = dict(temperature=0, n=1)
     if scenario == "seeded-multi":
         params = dict(
@@ -411,6 +480,23 @@ async def exercise_scenario(
             lambda active: any(any(lengths) for lengths in active.values()),
             60,
         )
+        prefixes = [
+            history
+            for history in await source.__ray_call__.remote(
+                backend_source_prefixes
+            )
+            if history["request_id"] in attempts
+        ]
+        scenario_evidence["source_prefix_history"] = prefixes
+        write(output / "continuation-result.json", result)
+        prefix_check = compare_reference_prefixes(prefixes, reference_history)
+        scenario_evidence["reference_prefix_check"] = prefix_check
+        write(output / "continuation-result.json", result)
+        if not prefix_check["comparable"]:
+            raise ValueError(
+                "Source prefix differs before migration: "
+                + json.dumps(prefix_check, sort_keys=True)
+            )
         scenario_evidence[
             "allocation_probe"
         ] = await manager.__ray_call__.remote(
@@ -444,6 +530,16 @@ async def exercise_scenario(
         target_identity = await target.__ray_call__.remote(base.actor_identity)
         if target_identity["cgroup"] != source_identity["cgroup"]:
             raise RuntimeError("Target is not in the same owned cgroup")
+        await record_numerical_runtime(
+            config,
+            output,
+            result,
+            target,
+            scenario,
+            "target",
+            state["ready"][target_id]["node"],
+            target_identity["cgroup"],
+        )
         logs = base.read_run_logs(root, {})
         events = parse_events(logs)
         frozen = [
@@ -620,6 +716,7 @@ def main():
     validate_approval(
         config, os.environ, time.time(), Path("/proc/self/cgroup").read_text()
     )
+    from continuation_profile import worker_environment
     from qualify_migration import qualify
 
     output = Path(config["output"])
@@ -656,6 +753,7 @@ def main():
                     pass_check=runtime_passed,
                     result_name=path.name,
                     namespace="stage-d2-continuation",
+                    worker_env=worker_environment(config),
                 ),
                 config["deadline_epoch"] - time.time() - 120,
             )

@@ -33,6 +33,9 @@ class Actor:
 
     async def call(self, function, *args):
         world = self.world
+        if function is world.module.backend_numerical_runtime:
+            assert self.kind in {"source", "target"}
+            return copy.deepcopy(world.numerical_reports[self.kind])
         if self.kind == "source" and world.migrated:
             raise ActorGone("Source actor has retired")
         if function is world.base.actor_identity:
@@ -345,10 +348,10 @@ class Flow:
             self.evidence.MARKER + json.dumps(event) for event in self.events
         )
 
-    async def run(self, scenario, result):
+    async def run(self, scenario, result, config=None):
         return await self.module.exercise_scenario(
             scenario,
-            {},
+            config or {},
             self.output,
             result,
             self.output,
@@ -422,6 +425,78 @@ def flow_factory(monkeypatch, tmp_path):
 
 def result_state():
     return {"checks": {}, "cases": [], "scenarios": []}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", [None, "source", "target"])
+async def test_numerical_profile_checks_both_workers_and_preserves_failure_evidence(
+    flow_factory, failure
+):
+    from test_continuation_profile import worker_report
+
+    flow, result = flow_factory(), result_state()
+    source = worker_report()
+    source["cgroup"] = "0::/cpu-continuation-test\n"
+    target = {
+        **copy.deepcopy(source),
+        "gpu_uuid": "GPU-22222222-2222-2222-2222-222222222222",
+        "pid": 202,
+    }
+    config = {
+        "numerical_profile": "batch-invariant-v1",
+        "gpu_uuids": [source["gpu_uuid"], target["gpu_uuid"]],
+    }
+    flow.numerical_reports = {"source": [source], "target": [target]}
+    if failure:
+        flow.numerical_reports[failure][0]["batch_invariant_initialized"] = (
+            False
+        )
+        with pytest.raises(ValueError, match="batch_invariant_initialized"):
+            await asyncio.wait_for(flow.run("greedy", result, config), 5)
+    else:
+        await asyncio.wait_for(flow.run("greedy", result, config), 5)
+    saved = json.loads((flow.output / "continuation-result.json").read_text())
+    observations = saved["numerical_observations"]
+    assert [item["role"] for item in observations] == (
+        ["source"] if failure == "source" else ["source", "target"]
+    )
+    assert observations[-1]["validated"] is (failure is None)
+    if failure:
+        assert (
+            observations[-1]["workers"][0]["batch_invariant_initialized"]
+            is False
+        )
+        assert "error" in observations[-1]
+        assert not result["cases"]
+    assert flow.router.request_count == 0 and not flow.reservations
+    if failure == "source":
+        assert not flow.posts and not flow.allocation_started.is_set()
+    else:
+        assert len(flow.deallocated) == 1
+
+
+def test_source_prefix_read_retains_completed_requests_and_active_choices(
+    flow_factory,
+):
+    flow = flow_factory()
+    request = {
+        "request_id": "completed",
+        "input_tokens": [10, 11],
+        "max_tokens": 4,
+        "n": 2,
+    }
+    complete = flow.history(request)
+    active = flow.history({**request, "request_id": "active"}, frozen=True)
+    flow.source.request_history["completed"] = flow.engine_output(complete)
+    flow.source.active_requests["active"] = {
+        "output": flow.engine_output(active)
+    }
+    flow.source.active_requests["pending"] = {"output": None}
+    before = flow.module.backend_history(flow.source)
+    actual = flow.module.backend_source_prefixes(flow.source)
+    assert [item["request_id"] for item in actual] == ["completed", "active"]
+    assert [len(item["token_ids"]) for item in actual[1]["choices"]] == [2, 2]
+    assert flow.module.backend_history(flow.source) == before
 
 
 @pytest.mark.asyncio
@@ -554,6 +629,20 @@ async def test_failed_comparison_keeps_inputs_before_validation_and_cleanup(
         return history
 
     monkeypatch.setattr(flow, "history", divergent_history)
+    read_prefixes = flow.module.backend_source_prefixes
+
+    def earlier_prefixes(actor):
+        histories = read_prefixes(actor)
+        if position == 0:
+            # A successful early check cannot replace checking the later
+            # frozen/final history: the first observation was still equal.
+            for history in histories:
+                history["choices"][0]["logprobs"][0]["1000"]["logprob"] = -0.1
+        return histories
+
+    monkeypatch.setattr(
+        flow.module, "backend_source_prefixes", earlier_prefixes
+    )
     validate = flow.evidence.validate_case
     captured = []
 
@@ -596,3 +685,40 @@ async def test_failed_comparison_keeps_inputs_before_validation_and_cleanup(
     assert len(flow.deallocated) == 1 and not flow.reservations
     assert flow.router.request_count == flow.target_handle.concurrency == 0
     assert len(flow.posts) == len(set(flow.posts)) == 4
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scenario", ["greedy", "seeded-multi"])
+async def test_existing_source_difference_stops_before_allocation(
+    flow_factory, monkeypatch, scenario
+):
+    flow, result = flow_factory(), result_state()
+    original_history = flow.history
+
+    def divergent_history(request, *, frozen=False):
+        history = original_history(request, frozen=frozen)
+        if not request["request_id"].endswith("-reference"):
+            history["choices"][0]["logprobs"][0][1000]["logprob"] = -0.125
+        return history
+
+    monkeypatch.setattr(flow, "history", divergent_history)
+    with pytest.raises(
+        ValueError, match="Source prefix differs before migration"
+    ):
+        await asyncio.wait_for(flow.run(scenario, result), 5)
+    saved = json.loads((flow.output / "continuation-result.json").read_text())
+    checkpoint = saved["scenarios"][0]
+    assert checkpoint["reference_prefix_check"]["comparable"] is False
+    assert checkpoint["reference_prefix_check"]["difference"]["path"] == [
+        "logprobs",
+        0,
+        "1000",
+        "logprob",
+    ]
+    assert checkpoint["source_prefix_history"]
+    assert "allocation_probe" not in checkpoint
+    assert not flow.allocation_started.is_set()
+    assert not flow.migrated and not flow.reservations
+    assert not flow.deallocated and not result["cases"]
+    assert flow.router.request_count == flow.source_handle.concurrency == 0
+    assert not flow.router.allocated_instances

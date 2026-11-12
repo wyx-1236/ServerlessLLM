@@ -111,6 +111,42 @@ def test_complete_tokens_choices_logprobs_and_usage_match(case):
     assert case == before
 
 
+def test_reference_prefix_check_accepts_partial_choices_and_json_keys(case):
+    prefix = json.loads(json.dumps(case["source_snapshot"]))
+    assert evidence.compare_reference_prefixes(
+        [prefix], case["reference_history"]
+    ) == {"comparable": True, "checked_tokens": 3, "difference": None}
+
+
+@pytest.mark.parametrize("field", ["token_ids", "logprobs"])
+def test_reference_prefix_check_locates_existing_difference(case, field):
+    prefix = copy.deepcopy(case["source_snapshot"])
+    if field == "token_ids":
+        prefix["choices"][1][field][0] = 99
+    else:
+        prefix["choices"][1][field][0][30]["logprob"] = -0.2
+    report = evidence.compare_reference_prefixes(
+        [prefix], case["reference_history"]
+    )
+    assert report["comparable"] is False
+    assert report["request_id"] == "inflight"
+    assert report["choice_index"] == 1
+    assert report["difference"]["path"][:2] == [field, 0]
+
+
+def test_reference_prefix_check_rejects_absent_output(case):
+    with pytest.raises(ValueError, match="No generated source prefix"):
+        evidence.compare_reference_prefixes([], case["reference_history"])
+
+
+@pytest.mark.parametrize("rows", [None, []])
+def test_reference_prefix_check_rejects_missing_logprobs(case, rows):
+    prefix = copy.deepcopy(case["source_snapshot"])
+    prefix["choices"][0]["logprobs"] = rows
+    with pytest.raises(ValueError, match="Missing source/reference logprobs"):
+        evidence.compare_reference_prefixes([prefix], case["reference_history"])
+
+
 @pytest.mark.parametrize(
     "field,path,value",
     [

@@ -181,6 +181,53 @@ request ID、choice index、首个不一致字段的路径及实际/对照值，
 清理；差异诊断不改变严格相等条件，也不将已冻结前缀与独立运行的数值差异自动
 归因于迁移。CPU 回归覆盖源端已存在差异和恢复后出现差异两种失败路径。
 
+严格对照另有一个迁移前必要条件：在源端已经观察到生成输出后、安装 allocation
+probe 之前，读取本场景请求的累计 token/logprobs 前缀（包含观察期间刚完成的请求），
+并与对应 choice 的对照前缀逐项比较。先保存读取结果，再保存比较结果；已有差异
+必须在申请迁移分配前失败并清理流量，不能把这一差异归因于目标恢复。缺少有效输出
+或 logprobs 也不能通过。此检查不比较尚在缓冲的文本，不替代迁移后的完整比较；
+前缀相等只表示尚未发现差异，不证明不同批次或目标重算具有数值确定性。
+
+首批的逐 choice 严格相等是该固定资格场景的额外要求，不扩大上文对一般随机请求的
+功能承诺。不得通过删除 logprobs 比较、设置未经论证的容差或自动打开
+`VLLM_BATCH_INVARIANT` 来取得通过。确定性计算配置需要作为独立变更审查，并在
+固定版本、设备、attention backend 与 V2 runner 的实际组合上重新取得实机证据。
+
+### 显式批次不变验收配置
+
+D2 批准文件可显式选择 `numerical_profile: "batch-invariant-v1"`；缺省仍为
+`default`。该选择只改变本批次验收的计算配置，不能推导普通默认服务具有相同的
+数值确定性或性能。D1、Store 导出、已有产物与线上默认参数不随此选择改变。
+
+选中该配置时，外部 runner 必须在启动 Python 前设置 `VLLM_BATCH_INVARIANT=1`。
+D2 入口在任何模型导入或资源启动前检查批准字段与环境一致，拒绝未知配置、缺失
+变量及 default 模式下意外继承的启用变量。批准仍须独立绑定 GPU、期限和部署身份；
+配置字段本身不授权任何 GPU 使用。两个私有 Ray worker 节点显式传递同一变量。
+
+模型配置固定 `attention_config.backend=FLASH_ATTN`，保留 TP1/BF16/eager、V2、
+原请求参数、缓存及 Store 加载路径。仅此配置安装独立的只读 Worker 诊断扩展；
+不修改 Store 扩展或上游 wheel。通过固定版本的命名 collective RPC 读取实际 Worker
+的版本、PID/cgroup、GPU UUID/名称/计算能力、V2 runner 类、批次不变环境与已初始化
+标记，以及 attention groups 和各层实现的启用状态。不能以 frontend 环境替代
+实际模型进程证据，也不能由诊断方法初始化或打开批次不变模式。
+
+每个场景的源端在发送对照请求前读取；目标端在取得身份后读取。结果先落盘再校验，
+异常按已有 finally 路径清理。配置要求单个 TP1 Worker、A100/SM80、正确 GPU 与
+cgroup、vLLM 0.31.0、V2 runner、实际已启用的批次不变实现、非空且全部为
+FLASH_ATTN 的 attention layers。缺失或不匹配均失败，不回退其他 backend 或配置。
+成功结果须包含两个场景各自的源和目标诊断通过记录。
+
+CPU 回归覆盖批准/环境冲突、两个节点的显式传递、只读诊断、虚假启用标记、runner/
+设备/attention 不匹配、失败证据和清理，以及 default/D1 不受影响。实际数学确定性
+仍由独立批准的 GPU 批次证明：保留迁移前前缀检查及完整 tokens/text/logprobs/
+cumulative_logprob 严格比较，不加容差，不删 seeded-multi 场景。
+
+固定依据为 [v0.31.0 批次不变说明](https://docs.vllm.ai/en/v0.31.0/features/batch_invariance/)
+及锁定 wheel 内 `batch_invariant.py` 的 SM80 实现、`gpu_worker.py` 的初始化调用、
+V2 `model_runner.py` 的 attention groups 和 `flash_attn.py` 的每层启用标记。
+`envs.py` 中仍写计算能力 9.0 的注释不能覆盖上述实现与文档；静态核对也不能当作
+当前模型/设备/恢复链已经通过实机数值验收。
+
 `continuation-result.json` 分开记录运行结果和外部释放证据；脚本不会自行预约 GPU，
 也不会把进程内 cleanup 成功写成 GPU 已解锁。批准文件必须绑定精确 GPU UUID 顺序、
 soft lock 动作、服务 cgroup、截止时间、不可变产物和匹配 commit/wheel 的部署验证。

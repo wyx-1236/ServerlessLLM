@@ -13,6 +13,12 @@
     "vllm/v1/core/sched/scheduler.py": "f820bee4f42b878b262a30f3728a97d7413477b2a277748e20f2528ac2ec2f2a",
     "vllm/v1/core/sched/output.py": "972e0bc8e7af1f4262ac73f660f6b8f798ba780f86c031a9c8a7f10cbfaad3a8",
     "vllm/v1/structured_output/__init__.py": "92f2b2550d988abd1ac4edf9664b14dd8c2afb4cee4dc585c7348ce3995d5ac5",
-    "vllm/v1/metrics/stats.py": "b96cabb8f8e692c6c71f30cc2e6793fa86b112bb3ab4a27f6dcb22f3a72e4d68"
+    "vllm/v1/metrics/stats.py": "b96cabb8f8e692c6c71f30cc2e6793fa86b112bb3ab4a27f6dcb22f3a72e4d68",
+    "vllm/model_executor/determinism/batch_invariant.py": "fd39330e48f8b209def7378b1b83fa009534617e8fc41230dc4f40a528309993",
+    "vllm/v1/worker/utils.py": "df38390808195cf36ca6e1e85c4e10e8a8d858e349e310463471b56210976f26",
+    "vllm/v1/attention/backends/flash_attn.py": "ea53fb41165323f13094604051c73d44a579994fe5a427243aa9faafc280b1c2",
+    "vllm/v1/worker/gpu_worker.py": "43bd01925cd84f7d8a1d4a2ec30e289014a485fe4492a5343cbc893e8ed2f518",
+    "vllm/v1/worker/gpu/model_runner.py": "725c47114e148ade3a26b4cc9c5f7295588fdd387afc3cb5fdb2d16513a1bb5c",
+    "vllm/v1/engine/async_llm.py": "ff933ed78aa3195782cf1c6d18c53897adfa5bf920421bd2bcc330f2adc84d1e"
   }
 }

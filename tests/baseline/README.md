@@ -231,6 +231,20 @@ The manual `qualify_continuation.py` entry has separate CPU tests:
   all-choice history, no-retry HTTP attempt accounting and debug-only evidence.
 - `test_continuation_flow.py` exercises the actual scenario orchestration with
   controlled HTTP/actor/cache boundaries, including late allocation cleanup.
+- `test_continuation_profile.py` checks the opt-in `batch-invariant-v1` profile:
+  approval/environment agreement, explicit propagation to both private nodes,
+  read-only Worker diagnostics and rejection of missing or inconsistent runtime
+  state. It also executes the hash-pinned SM80 initialization functions with CPU
+  substitutes, checking operation registration rather than GPU kernel math.
+
+For a separately approved D2 batch, selecting
+`"numerical_profile": "batch-invariant-v1"` in the approval file requires the
+external runner to set `VLLM_BATCH_INVARIANT=1` before starting Python. The entry
+pins FLASH_ATTN and records actual source/target Worker state in
+`numerical_observations`. These checks retain the strict output oracle and do
+not establish numerical determinism by themselves. Omission of the field keeps
+the default profile; ambient activation is rejected by the D2 entry. Ordinary
+serving and D1 defaults are unchanged. No CPU test grants GPU authorization.
 
 These tests neither call the resource-owning runner nor load model weights.
 The continuation entry and the retained D1 entry share startup/cleanup code,

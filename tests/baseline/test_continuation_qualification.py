@@ -127,6 +127,111 @@ def test_new_scope_is_accepted_without_mutating_approval(
     assert continuation_approval == before
 
 
+def test_numerical_profile_requires_explicit_environment_before_resource_start(
+    qualification,
+    continuation_approval,
+    monkeypatch,
+    tmp_path,
+):
+    config = {
+        **continuation_approval,
+        "numerical_profile": "batch-invariant-v1",
+    }
+    calls = prepare_cli(monkeypatch, tmp_path, config)
+    monkeypatch.delenv("VLLM_BATCH_INVARIANT", raising=False)
+    with pytest.raises(ValueError, match="startup environment"):
+        qualification.main()
+    assert not calls and not Path(config["output"]).exists()
+
+
+@pytest.mark.parametrize("name", ["default", "batch-invariant-v1"])
+def test_main_passes_only_selected_profile_to_private_workers(
+    qualification,
+    continuation_approval,
+    monkeypatch,
+    tmp_path,
+    name,
+):
+    import qualify_migration
+
+    config = {**continuation_approval, "numerical_profile": name}
+    prepare_cli(monkeypatch, tmp_path, config)
+    monkeypatch.setenv(
+        "VLLM_BATCH_INVARIANT", "1" if name == "batch-invariant-v1" else "0"
+    )
+    received = []
+
+    async def inspect(*args, **kwargs):
+        received.append(kwargs["worker_env"])
+
+    monkeypatch.setattr(qualify_migration, "qualify", inspect)
+    # No real Ray/engine construction, and this intentionally cannot pass.
+    assert qualification.main() == 1
+    assert received == (
+        [{"VLLM_BATCH_INVARIANT": "1"}]
+        if name == "batch-invariant-v1"
+        else [{}]
+    )
+
+
+def test_numerical_success_requires_all_four_valid_worker_observations(
+    qualification,
+):
+    from test_continuation_profile import worker_report
+
+    result = successful_result(qualification)
+    uuids = [
+        worker_report()["gpu_uuid"],
+        "GPU-22222222-2222-2222-2222-222222222222",
+    ]
+    result["approval"] = {
+        "numerical_profile": "batch-invariant-v1",
+        "gpu_uuids": uuids,
+    }
+    assert not qualification.runtime_passed(result)
+    report = worker_report()
+    result["numerical_observations"] = [
+        {
+            "scenario": scenario,
+            "role": role,
+            "node": str(index),
+            "validated": True,
+            "expected_uuid": uuids[index],
+            "expected_cgroup": report["cgroup"],
+            "workers": [{**copy.deepcopy(report), "gpu_uuid": uuids[index]}],
+        }
+        for scenario in qualification.SCENARIOS
+        for index, role in enumerate(("source", "target"))
+    ]
+    assert qualification.runtime_passed(result)
+    for index in range(4):
+        invalid = copy.deepcopy(result)
+        invalid["numerical_observations"].pop(index)
+        assert not qualification.runtime_passed(invalid)
+        invalid = copy.deepcopy(result)
+        invalid["numerical_observations"][index]["workers"][0][
+            "batch_invariant_initialized"
+        ] = False
+        assert not qualification.runtime_passed(invalid)
+
+
+@pytest.mark.asyncio
+async def test_numerical_inspection_uses_pinned_named_worker_rpc(qualification):
+    calls = []
+
+    async def collective_rpc(method, **kwargs):
+        calls.append((method, kwargs))
+        return [{"worker": "observed"}]
+
+    actor = SimpleNamespace(
+        engine=SimpleNamespace(collective_rpc=collective_rpc)
+    )
+    assert await qualification.backend_numerical_runtime(actor) == [
+        {"worker": "observed"}
+    ]
+    assert calls == [("sllm_numerical_runtime", {"timeout": 30})]
+
+
 def test_old_and_new_scopes_cannot_authorize_each_other(
     qualification,
     approval,
