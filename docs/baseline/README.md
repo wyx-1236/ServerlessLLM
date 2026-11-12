@@ -1,7 +1,8 @@
 # ServerlessLLM-vLLM Baseline 工程入口
 
 本目录保存独立 Baseline 的升级设计、来源和证据索引。目标为 vLLM 0.31.0；
-阶段 B 的原生 Store 流水线与阶段 C 的限定服务链已实测并通过用户阶段审查；迁移、TP2 和模型/性能矩阵仍待后续阶段。
+阶段 B 的原生 Store 流水线与阶段 C 的限定服务链已实测并通过用户阶段审查；
+D1 迁移链和 D2 两个限定续写场景已实测，阶段 D 审查及剩余边界、TP2 和模型/性能矩阵仍待完成。
 
 - [权威升级设计](engine-upgrade.md)：架构、兼容边界、阶段与验证要求。
 - [仓库建立指南](repository-bootstrap.md)：Fork、独立 clone、固定上游及分支。
@@ -34,9 +35,15 @@
 
 D1 迁移候选已修复 Router/调度器的请求、actor 和预留所有权，并通过 356 项
 CPU baseline 检查。提交 `54d099e` 已完成双卡原版迁移链与回滚的 13 项限定检查，
-阶段报告等待用户审查；透明续写仍有缺口，整体验收未完成。手动入口为
-`scripts/baseline/qualify_migration.py`。透明续写能力仍有缺口，详见
+阶段报告等待用户审查，整体验收未完成。手动入口为
+`scripts/baseline/qualify_migration.py`，详见
 [迁移候选边界](service-lifecycle.md#d1-migration-candidate-bounded-checks-passed-review-pending)。
+
+D2 提交 `6938fe1` 已通过 greedy 和 seeded-multi 同请求续写：5 个已有输出请求、
+7 个 choice 严格匹配对照，并完成独立资源释放。此结果仅覆盖显式
+`batch-invariant-v1` 下的 Qwen3-0.6B BF16/TP1/eager/V2/FLASH_ATTN；普通默认
+计算配置及其他迁移边界不继承此资格。见[限定实机证据](evidence-index.json#continuation_gpu_20261112_113642)，
+等待用户阶段审查。
 
 ## 必须保留的执行关卡
 

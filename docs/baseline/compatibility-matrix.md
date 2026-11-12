@@ -10,6 +10,7 @@ serving、CUDA 初始化或模型装载，不授予模型、迁移或性能资�
 | 后端请求生命周期 | 研究副本观察到 token 跟踪、stop 排空及 shutdown abort | 阶段 C 的 13 项真实运行检查通过：HTTP 服务链、4 个活动后端请求、取消、stop/shutdown、重启、Worker 故障和初始化失败后的显式清理重建；不代表自动故障迁移 |
 | Store 原生 writer/reader | 曾有截断产物，后续研究使用 CPU 参考 writer | 原生 writer 完成与 reader 逻辑尾块对齐已修复；57 项 writer、25 项 reader CPU 测试、服务器真实 ext4 故障文件对照通过；两个扩展已重编译，真实 native Store 恢复通过；不以 CPU writer 替代原生路径 |
 | 原版迁移调用链 | 固定 prompt 恢复调用返回，不是源活动快照接续 | D1 在54d099e通过真实双卡目标加载、源快照重放、缓存命中、路由切换、源释放及两类回滚；3个源活动请求终态为abort，仍无resume_generate/透明续写资格；等待阶段审查 |
+| 同一 HTTP 请求透明续写 | D1 不提供该资格 | D2 在6938fe1通过 greedy 与 seeded-multi：5个已有输出请求、7个choice跨GPU接续，完整tokens/text/logprobs严格等于对照；仅限显式batch-invariant-v1、Qwen3-0.6B BF16/TP1/eager/V2/FLASH_ATTN；等待阶段审查 |
 | TP2、图、多模型、encode | 没有由阶段 0 增加的直接运行证据 | 未验证，按组合分别准入 |
 | 安装与 ABI | 研究环境不是本 Fork 的完整依赖资格 | Linux 依赖已锁定；CPU HTTP→Ray actor 边界已验；Qwen3 准备链的 Python 3.12.13/Torch 2.13.0+cu130/vLLM 0.31.0/native Store ABI 已验；完整 serving 镜像尚未构建 |
 | 配置与导入 | 旧包会在导入时强制载入其他后端 | 无执行依赖的配置投影与准备链真实引擎构造已验；限定 Qwen3 服务配置和生命周期已在阶段 C 验证 |
@@ -29,6 +30,11 @@ debug 历史，以及旧 vLLM 测试接口。Transformers 候选使用新版 Cac
 回滚及恢复，保留 V2 的原 prompt/output 分界；这些代码不继承旧提交的 GPU 资格。
 同请求 HTTP 实机入口见 [续写验收范围](migration-continuation-engine-plan.md#同一-http-请求的首批实机验收入口)。
 CPU 检查与固定源码校验不能代替真实引擎采样、缓存、HTTP 续写和独立资源释放。
+2026-11-12 的 D2 批次 `20261112-113642` 已取得上述两个限定场景的直接证据：
+四次实际 Worker 配置检查、12 项运行检查和独立 GPU 释放均通过，下载后的五个
+请求再次通过严格校验。详见[批次证据](evidence-index.json#continuation_gpu_20261112_113642)。
+这不证明普通 default 计算配置具有相同确定性；EOS/stop、冻结后故障回滚/取消、
+同请求反复迁移等组合仍未取得 GPU 资格。该结果等待用户审查，不关闭整个阶段 D。
 上述历史阻断的代码修复与实机关闭是两种状态；官方 Transformers 双模型、其他
 受影响功能、TP2、模型矩阵和最终镜像仍须各自验收。保留活动方案，不发布正式完成版。
 工程验证与原始研究归档来源见 [provenance](provenance.json) 和

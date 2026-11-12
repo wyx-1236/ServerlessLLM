@@ -1,5 +1,176 @@
 {
   "schema_version": 1,
+  "continuation_ray_rpc_repair_20261112": {
+    "commit": "6938fe106868ca9ef4619a3ffb83473babff39bd",
+    "status": "CPU repair and real GPU bounded continuation passed; stage review pending",
+    "root_cause": "Ray 2.48.0 __ray_call__ returns async callback coroutine without awaiting; serialization failed before control requests. CPU flow double had bypassed this boundary.",
+    "fix": "Explicit async backend get_numerical_runtime RPC awaits the named Worker RPC. Real zero-GPU Ray regression reproduces the old failure and validates success plus persisted Worker errors.",
+    "local_cpu": {
+      "passed": 685,
+      "skipped": 21,
+      "complementary_passed": 77,
+      "all_21_skips_covered": true
+    },
+    "server_cpu": {
+      "tests": 706,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "server_cpu_seconds": 47.844,
+    "deployment": {
+      "commit": "6938fe106868ca9ef4619a3ffb83473babff39bd",
+      "archive_sha256": "053cc330ee66a1d07abca75d224461d469a326a73f8a0a945571a2f9acfcecd4",
+      "tracked_file_count": 356,
+      "directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2-6938fe1-20261112/source",
+      "all_tracked_files_match_commit": true
+    },
+    "main_wheel_sha256": "750580bb8ce201823599b736bd806fad4993e3b2edddeb994c200fc11767e741",
+    "cpu_evidence": "External engine-upgrade-20261112/continuation-ray-repair and continuation-ray-deployment/repair-server-evidence",
+    "cpu_archive_sha256": "9909d5bf748447fbf038ece45e970fedb199bb7c285e5ab6e8540f99e2283dd3",
+    "compatibility": "Ordinary serving defaults, Store, HTTP parameters and strict output comparison unchanged"
+  },
+  "continuation_gpu_20261112_113642": {
+    "status": "Bounded same-request continuation passed; user stage review pending",
+    "commit": "6938fe106868ca9ef4619a3ffb83473babff39bd",
+    "server": "inspur-gpu-12 (192.168.5.188)",
+    "resource_request": "soft lock GPU 1,2",
+    "resource_release": "soft unlock GPU 1,2",
+    "authorization": "User authorized diagnosis, repair and bounded retries for one hour, 2026-11-12 11:21:54 to 12:21:54 UTC; this single successful batch ended early",
+    "configuration": "Qwen3-0.6B, BF16/TP1/eager, vLLM 0.31.0 V2, FLASH_ATTN, explicitly selected batch-invariant-v1; one host with two private Ray worker nodes",
+    "elapsed_seconds": 304.7046551704407,
+    "checks": {
+      "private_store": true,
+      "worker_mapping": true,
+      "http_baseline": true,
+      "scheduler_trigger": true,
+      "same_http_continuation": true,
+      "final_snapshot_restored": true,
+      "full_tokens_equal": true,
+      "request_ledger_settled": true,
+      "atomic_publication": true,
+      "source_cleanup": true,
+      "target_prefix_cache_hit": true,
+      "controller_shutdown": true
+    },
+    "numerical_worker_reports": 4,
+    "resumed_http_requests": 5,
+    "resumed_choices": 7,
+    "cases": [
+      {
+        "scenario": "greedy",
+        "request_id": "d2-greedy-1-4",
+        "choice_count": 1,
+        "prompt_tokens": 96,
+        "completion_tokens": 384,
+        "frozen_output_tokens": [
+          331
+        ],
+        "resumed_choice_indices": [
+          0
+        ],
+        "source_had_output": true,
+        "full_tokens_equal": true
+      },
+      {
+        "scenario": "greedy",
+        "request_id": "d2-greedy-2-4",
+        "choice_count": 1,
+        "prompt_tokens": 96,
+        "completion_tokens": 384,
+        "frozen_output_tokens": [
+          286
+        ],
+        "resumed_choice_indices": [
+          0
+        ],
+        "source_had_output": true,
+        "full_tokens_equal": true
+      },
+      {
+        "scenario": "greedy",
+        "request_id": "d2-greedy-0-4",
+        "choice_count": 1,
+        "prompt_tokens": 96,
+        "completion_tokens": 384,
+        "frozen_output_tokens": [
+          379
+        ],
+        "resumed_choice_indices": [
+          0
+        ],
+        "source_had_output": true,
+        "full_tokens_equal": true
+      },
+      {
+        "scenario": "seeded-multi",
+        "request_id": "d2-seeded-multi-0-3",
+        "choice_count": 2,
+        "prompt_tokens": 96,
+        "completion_tokens": 768,
+        "frozen_output_tokens": [
+          336,
+          336
+        ],
+        "resumed_choice_indices": [
+          0,
+          1
+        ],
+        "source_had_output": true,
+        "full_tokens_equal": true
+      },
+      {
+        "scenario": "seeded-multi",
+        "request_id": "d2-seeded-multi-1-3",
+        "choice_count": 2,
+        "prompt_tokens": 96,
+        "completion_tokens": 768,
+        "frozen_output_tokens": [
+          26,
+          24
+        ],
+        "resumed_choice_indices": [
+          0,
+          1
+        ],
+        "source_had_output": true,
+        "full_tokens_equal": true
+      }
+    ],
+    "comparison": "Original HTTP caller completed once; frozen state preserved; complete tokens/text/top-5 logprobs/cumulative_logprob and terminal state strictly equal to independent controls; no tolerance",
+    "offline_audit": "Downloaded full results revalidated for all 5 requests with generated-prefix required; source prefixes and settled ledger rechecked",
+    "cleanup": {
+      "task_workloads_released": true,
+      "remaining_owned_pids": [],
+      "all_devices_idle": true,
+      "final_gpu_mib": {
+        "1": 0,
+        "2": 1
+      },
+      "platform_reservation": "Unchanged"
+    },
+    "sampled_peak_gpu_mib": {
+      "1": 2377,
+      "2": 2377
+    },
+    "sampled_peak_cgroup_bytes": 14512984064,
+    "evidence_location": "External engine-upgrade-20261112/continuation-gpu-ray/evidence-20261112-113642",
+    "archive_sha256": "4826e3ca4cde37a2666f2cd64ff75cfa2c85de6330bfc515c490c8fadd472e97",
+    "full_records_archive_sha256": "56bc85babdc4b6e604f2e6af13f095eba3294112efcd380462bfa100eca61850",
+    "archive_note": "Initial archive excludes files >=20 MiB. Supplementary full-records archive includes complete continuation, batch and release JSON; archive and all seven file hashes verified.",
+    "acceptance_boundary": "Two bounded scenarios only; default numerical profile, EOS/stop, post-freeze rollback/cancellation, repeated migration of the same request, Transformers GPU regression, TP2, other models, performance and final image remain unqualified"
+  },
+  "continuation_gpu_20261112_111615": {
+    "status": "Failed before migration; no continuation qualification",
+    "commit": "450fd9d81f132feabe77d1046480d6e7eb1aa0c5",
+    "server": "inspur-gpu-12 (192.168.5.188)",
+    "resource_request": "soft lock GPU 1,2",
+    "resource_release": "soft unlock GPU 1,2",
+    "failure": "RayTaskError(TypeError): cannot pickle coroutine object at source numerical diagnostic",
+    "cleanup": "No task-owned PIDs or compute processes; GPU 1,2 returned to 0/1 MiB",
+    "evidence_location": "External engine-upgrade-20261112/continuation-gpu-numerical/evidence-20261112-111615",
+    "archive_sha256": "10ab4517c2441e5bda120691be973491249380729f6a86a0eaeddd3ce7c3f7ac"
+  },
   "continuation_numerical_profile_server_cpu_20261112": {
     "status": "Reviewed numerical-profile candidate deployed; CPU qualification passed; GPU qualification pending",
     "commit": "450fd9d81f132feabe77d1046480d6e7eb1aa0c5",

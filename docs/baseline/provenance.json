@@ -1,5 +1,12 @@
 {
   "schema_version": 1,
+  "continuation_gpu_candidate": {
+    "commit": "6938fe106868ca9ef4619a3ffb83473babff39bd",
+    "status": "Two bounded GPU scenarios passed; user stage review pending",
+    "runtime_evidence": "evidence-index.json#continuation_gpu_20261112_113642",
+    "configuration": "Qwen3-0.6B BF16/TP1/eager, vLLM 0.31.0 V2, FLASH_ATTN, explicit batch-invariant-v1",
+    "ordinary_defaults_changed": false
+  },
   "upstream": {
     "url": "https://github.com/ServerlessLLM/ServerlessLLM",
     "reference_commit": "9f50241baa5386e06a9321c51f19a9ef5f964c2b",
@@ -61,7 +68,7 @@
     "runtime_evidence": "evidence-index.json#stage_b_runtime_qualification",
     "tested_executable_commit": "fef30ee9bab49fa7bf8b8b9ff53e60b9157ef4b3"
   },
-  "code_scope": "A environment/configuration; B native writer/reader/plugin/artifact; C service/lifecycle; D1 repaired original migration chain and rollback. Transparent continuation, TP2 and broader release requirements remain unqualified.",
+  "code_scope": "A environment/configuration; B native writer/reader/plugin/artifact; C service/lifecycle; D1 repaired original migration chain and rollback. D2 bounded greedy and seeded-multi continuation passed on 6938fe1 with explicit batch-invariant-v1; stage review, other continuation boundaries, TP2 and broader release requirements remain pending.",
   "gpu_usage": "Four Stage B batches and four Stage C batches, explicitly approved soft lock GPU 1 on inspur-gpu-12. Failures preserved; B and bounded C passed. All task workloads released with no owned PIDs, no compute apps and 0 MiB; user six-hour platform reservation unchanged. D1 used two separately approved batches on inspur-gpu-12 soft lock GPU 0,1; bounded original-chain checks passed, both batches released and evidence archived; platform reservations unchanged.",
   "stage_c_candidate": {
     "status": "Stage C bounded checks passed and user stage review approved",
