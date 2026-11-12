@@ -68,7 +68,10 @@ def configure_stopping_flow(flow, tmp_path, mode="normal"):
 
         def apply_chat_template(self, messages, **kwargs):
             assert kwargs == dict(
-                tokenize=True, add_generation_prompt=True, enable_thinking=False
+                tokenize=True,
+                add_generation_prompt=True,
+                enable_thinking=False,
+                return_dict=False,
             )
             return [10, 11]
 
@@ -216,6 +219,26 @@ async def test_eos_probe_exhaustion_does_not_start_migration(
     assert not flow.requests and not flow.allocation_started.is_set()
     saved = json.loads((flow.output / stopping.RESULT_NAME).read_text())
     assert len(saved["scenarios"][0]["stopping"]["probes"]) == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tokens", [object(), [True], [[10, 11]], [-1]])
+async def test_invalid_prompt_tokens_keep_failure_evidence(
+    stopping, flow_factory, tmp_path, tokens
+):
+    flow = flow_factory()
+    config, tokenizer = configure_stopping_flow(flow, tmp_path)
+    tokenizer.apply_chat_template = lambda *args, **kwargs: tokens
+    result = {"checks": {}, "cases": [], "scenarios": []}
+    with pytest.raises(ValueError, match="flat list of non-negative integer"):
+        await flow.run(
+            "eos", result, config, suite=stopping, tokenizer=tokenizer
+        )
+    saved = json.loads((flow.output / stopping.RESULT_NAME).read_text())
+    scenario = saved["scenarios"][0]
+    assert "flat list" in scenario["preparation_error"]
+    assert "prompt_token_ids" not in scenario["stopping"]["probes"][0]
+    assert not flow.posts and not flow.allocation_started.is_set()
 
 
 @pytest.mark.asyncio

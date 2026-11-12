@@ -261,6 +261,14 @@ tokens and actors; they do not qualify real tokenizer or GPU sampling behavior.
 Its approval scope is `stage-d2-stopping`, its run prefix is `d2s`, and its output
 is `stopping-result.json`. The original D2 defaults and result name are unchanged.
 
+`test_stopping_tokenizer_cpu.py` also runs in the Transformers CPU profile.
+It uses a tiny offline tokenizer with the real pinned chat-template API through
+EOS preparation and shared scenario execution. It checks exact prompt IDs,
+successful evidence serialization and bounded probe-failure evidence. HTTP,
+model outputs and actors remain substitutes; no weights or GPU are used.
+The entry explicitly requests `return_dict=False` and validates flat integer
+IDs before recording them, because Transformers 5.17 defaults to `BatchEncoding`.
+
 `"numerical_profile": "batch-invariant-v1"` in the approval file requires the
 external runner to set `VLLM_BATCH_INVARIANT=1` before starting Python. The entry
 pins FLASH_ATTN and records actual source/target Worker state in

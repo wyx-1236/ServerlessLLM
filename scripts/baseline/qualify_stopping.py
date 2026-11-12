@@ -124,13 +124,16 @@ async def prepare_reference(
                 tokenize=True,
                 add_generation_prompt=True,
                 enable_thinking=False,
+                return_dict=False,
+            )
+            evidence.require(
+                isinstance(prompt_ids, list)
+                and all(type(t) is int and t >= 0 for t in prompt_ids),
+                "Expected a flat list of non-negative integer prompt token IDs",
             )
             probe["prompt_token_ids"] = prompt_ids
             save()
-            if (
-                not isinstance(prompt_ids, list)
-                or not 0 < len(prompt_ids) <= 128
-            ):
+            if not 0 < len(prompt_ids) <= 128:
                 probe["rejection"] = "Prompt outside the bounded token range"
                 save()
                 continue

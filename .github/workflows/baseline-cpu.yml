@@ -75,4 +75,4 @@ jobs:
           python-version: '3.12.13'
       - run: uv venv /tmp/sllm-transformers-cpu
       - run: uv pip sync --python /tmp/sllm-transformers-cpu/bin/python --require-hashes --torch-backend cpu tests/baseline/requirements-transformers-cpu.txt
-      - run: /tmp/sllm-transformers-cpu/bin/python -m pytest tests/backend_test/transformers_cache_cpu_test.py -q
+      - run: /tmp/sllm-transformers-cpu/bin/python -m pytest tests/backend_test/transformers_cache_cpu_test.py tests/baseline/test_stopping_tokenizer_cpu.py -q

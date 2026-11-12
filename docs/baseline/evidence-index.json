@@ -1,4 +1,51 @@
 {
+  "stopping_gpu_20261112_133644": {
+    "status": "Failed before EOS probe HTTP request; no stopping continuation qualification",
+    "commit": "07f11352976f276b39d0b744f05c7751f6d12f0b",
+    "server": "inspur-gpu-12 (192.168.5.188)",
+    "resource_request": "soft lock GPU 1,2",
+    "resource_release": "soft unlock GPU 1,2",
+    "scope": "stage-d2-stopping",
+    "elapsed_seconds_including_release": 131.49744749069214,
+    "failure": "Transformers 5.17 apply_chat_template defaults to BatchEncoding; prepare_reference stored that object before validating token shape, causing JSON serialization failure both during preparation and subsequent failure reporting.",
+    "coverage": "Source model initialization, private Store, worker mapping, HTTP baseline and source numerical runtime report passed; no EOS probe was sent, no stopping migration occurred and the two stop-string scenarios were not reached.",
+    "external_entry_correction": "Before launching, reproduced and corrected stale sd2 Ray-directory assertion to approved d2s namespace. Stored explicit two-hour user authorization with a 30-minute per-batch deadline; approval guards passed on CPU.",
+    "external_entry_checks": {
+      "ray_path_regression": "failed before fix; passed after fix",
+      "syntax": "passed",
+      "gpu_used": false,
+      "authorization_anchor_utc": "2026-11-12T13:35:34Z",
+      "authorization_hours": 2,
+      "per_batch_max_seconds": 1800,
+      "missing_approval": {
+        "returncode": 2,
+        "error": "launch-gpu-migration.py: error: the following arguments are required: --human-approved, --approval-anchor-utc, --physical-gpu-indices, --gpu-uuids"
+      },
+      "wrong_gpu": {
+        "returncode": 1,
+        "error": "AssertionError: This approval covers GPU 1,2 only"
+      },
+      "expired": {
+        "returncode": 1,
+        "error": "AssertionError: The two-hour D2 stopping approval has expired"
+      },
+      "entry_sha256": {
+        "launch-gpu-migration.py": "0850dc3d2bed1d7239f7cc47b1a669ab34cad7c0732698359b5cc080db7dd614",
+        "gpu-migration-batch.py": "9f34c64988db09bf067dc0b637a69f1d71687c4d97cc00067cb42bb2050a89ce",
+        "release-batch.py": "7c1f43dcbad9b26c3ba6e6cd1d207c2ba3a8b357c0c4dbc5f0f078ce3129f008"
+      }
+    },
+    "cleanup": "Owned unit stopped, no remaining owned PIDs or GPU compute processes; GPU 1 at 0 MiB, GPU 2 at 1 MiB. User platform reservation unchanged.",
+    "sampled_peak_gpu_mib": {
+      "1": 2377,
+      "2": 429
+    },
+    "evidence_location": "External engine-upgrade-20261112/stopping-gpu-manual/evidence-20261112-133644",
+    "evidence_archive_sha256": "c67dc063473cf4ca97806316b58e28ab4a3f5e9aaf7eb541f8a85c4fce92d257",
+    "archive_hash_verified": true,
+    "archive_manifest_files_verified": 13,
+    "acceptance_boundary": "Failure and cleanup evidence only. CPU repair and fresh separately approved GPU qualification required."
+  },
   "stopping_entry_cpu_20261112": {
     "status": "Approved stopping entry and first-match correction implemented; local and isolated server CPU checks passed; GPU qualification not run",
     "commit": "07f11352976f276b39d0b744f05c7751f6d12f0b",
