@@ -266,6 +266,8 @@ It uses a tiny offline tokenizer with the real pinned chat-template API through
 EOS preparation and shared scenario execution. It checks exact prompt IDs,
 successful evidence serialization and bounded probe-failure evidence. HTTP,
 model outputs and actors remain substitutes; no weights or GPU are used.
+Each case runs in a child process so importing Transformers/Torch does not
+change the parent process's import state for the zero-GPU Ray checks.
 The entry explicitly requests `return_dict=False` and validates flat integer
 IDs before recording them, because Transformers 5.17 defaults to `BatchEncoding`.
 

@@ -1,7 +1,12 @@
 """Exercise EOS preparation with the pinned real tokenizer API, without weights."""
 
 import asyncio
+import importlib.util
 import json
+import os
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 from test_continuation_flow import flow_factory as flow_factory
@@ -15,6 +20,33 @@ from test_stopping_qualification import stopping as stopping
 def test_real_chat_template_preserves_token_ids_and_evidence(
     stopping, request, tmp_path, mode
 ):
+    if os.environ.get("SLLM_STOPPING_TOKENIZER_TEST_CHILD") != "1":
+        if importlib.util.find_spec("transformers") is None:
+            pytest.skip("Real tokenizer requires the Transformers CPU profile")
+        had_torch = "torch" in sys.modules
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                f"{Path(__file__).resolve()}::{request.node.name}",
+                "-q",
+                "--tb=short",
+            ],
+            env={
+                **os.environ,
+                "SLLM_STOPPING_TOKENIZER_TEST_CHILD": "1",
+                "CUDA_VISIBLE_DEVICES": "",
+                "HF_HUB_OFFLINE": "1",
+                "TRANSFORMERS_OFFLINE": "1",
+            },
+            capture_output=True,
+            text=True,
+            timeout=45,
+        )
+        assert completed.returncode == 0, completed.stdout + completed.stderr
+        assert ("torch" in sys.modules) == had_torch
+        return
     transformers = pytest.importorskip("transformers")
     from tokenizers import Tokenizer
     from tokenizers.models import WordLevel
