@@ -1,7 +1,29 @@
 {
   "schema_version": 1,
+  "continuation_numerical_profile_server_cpu_20261112": {
+    "status": "Reviewed numerical-profile candidate deployed; CPU qualification passed; GPU qualification pending",
+    "commit": "450fd9d81f132feabe77d1046480d6e7eb1aa0c5",
+    "server": "inspur-gpu-12 (192.168.5.188)",
+    "deployment_directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2-450fd9d-20261112/source",
+    "source_identity": "All 355 tracked files match the Git archive before and after checks; clean checkout committed and pushed to origin/vllm-upgrade",
+    "source_archive_sha256": "c8a881f54d44417cf5e8d8c40d4201871041e92cd57f8074d4499f838e9d76a6",
+    "main_wheel_sha256": "1b2b92783e93218997774f1b153bb8234afa1024bca226b92d88986a3f910b0c",
+    "store_wheel_sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
+    "store_reuse": "Existing native wheel reused only after checking Store source and uv.lock unchanged from c3af908; every installed wheel member verified",
+    "server_tests": {"passed": 705, "failed": 0, "skipped": 0, "elapsed_seconds": 45.567},
+    "environment": "Independent Python 3.12.13 environment, Torch 2.13.0+cu130, vLLM 0.31.0, Transformers 5.17.0, Ray 2.48.0; offline sync and installed dependency checks passed",
+    "additional_checks": "Seventeen installed vLLM source hashes; installed lazy preparation and numerical Worker module with heavy imports blocked; native reader/writer imports; seven native CPU writer sizes; existing artifact integrity; CLI help; private gRPC/protobuf roundtrip",
+    "isolation": "No NVIDIA device nodes, empty CUDA_VISIBLE_DEVICES, private network/PID namespace; CUDA uninitialized before and after checks",
+    "cleanup": "CPU unit inactive with MainPID=0; no remaining task-owned processes; no GPU lock or unlock performed",
+    "manual_entry": "Bound to this exact deployment and batch-invariant-v1; VLLM_BATCH_INVARIANT=1 supplied before Python startup and checked by the batch wrapper. Syntax and three pre-SSH rejection paths passed; no valid approval generated or launch executed.",
+    "manual_entry_evidence": "External engine-upgrade-20261112/continuation-gpu-numerical/entry-cpu-checks.json",
+    "evidence_location": "External engine-upgrade-20261112/continuation-numerical-deployment/repair-server-evidence",
+    "evidence_archive_sha256": "239dac585965bb6e829f8e07168df800fc8d8e7af22cc16a0cb2a6d8c07857ec",
+    "gpu_used": false,
+    "acceptance_boundary": "CPU deployment readiness only. No real batch-invariant kernel, source/target runtime report, greedy/seeded-multi numerical continuation or GPU release qualified for this candidate."
+  },
   "continuation_numerical_profile_cpu_20261112": {
-    "status": "Explicitly approved implementation and CPU checks passed; uncommitted and not deployed",
+    "status": "Explicitly approved implementation and CPU checks passed; subsequently committed and deployed as 450fd9d, see server CPU qualification",
     "source_base_commit": "e115946adef6017aef3e5148db4eae636458ec18",
     "scope": "Opt-in D2 batch-invariant-v1 configuration; pre-import environment agreement, explicit propagation to both private workers, FLASH_ATTN selection and read-only actual Worker diagnostics",
     "focused": {"passed": 126, "failed": 0, "elapsed_seconds": 11.75},
@@ -16,7 +38,7 @@
     "acceptance_boundary": "No real model, GPU kernel or migrated numerical result qualified. This is preparation for a separately approved, newly deployed GPU batch."
   },
   "continuation_prefix_audit_cpu_20261112": {
-    "status": "CPU checks passed; uncommitted candidate awaiting review, not deployed",
+    "status": "CPU checks passed; subsequently included in commit 450fd9d and its server CPU qualification",
     "source_base_commit": "e115946adef6017aef3e5148db4eae636458ec18",
     "scope": "Reject already divergent source token/logprob prefixes before migration allocation; preserve strict final checks and failure cleanup",
     "baseline_and_legacy_backend": {"passed": 639, "failed": 0, "skipped": 21, "elapsed_seconds": 115.32},
