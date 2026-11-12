@@ -207,6 +207,14 @@ doubles and does not contact a shared Ray cluster.
 vLLM 0.31.0 source, including sampling parameters, token history, incremental
 detokenization and logprobs. It replaces their surrounding runtime imports;
 it does not import or run the full vLLM engine, scheduler or GPU sampler.
+`test_vllm_resume_stopping.py` compares uninterrupted and resumed outputs at
+every unfinished split of its stop-string examples, including repeated restores,
+Unicode strings, overlapping matches, min-token suppression, stop-text inclusion,
+length termination with buffered text, and both logprob layouts. It also executes
+the pinned upstream `check_stop` against real Request objects after synchronous
+and asynchronous resume admission for EOS, explicit stop IDs, ignore-EOS and
+original output/context limits. These tests supply tokens and character decoding;
+they do not qualify model tokenization or GPU sampler masking of EOS/min_tokens.
 The source hashes match the locked wheel. Fetch only those small Python files
 into a cache outside the repository and add the pinned msgspec dependency:
 

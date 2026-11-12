@@ -1,5 +1,44 @@
 {
   "schema_version": 1,
+  "continuation_stopping_cpu_20261112": {
+    "status": "CPU stopping boundary matrix passed; no new GPU qualification",
+    "source_base_commit": "2085298",
+    "scope": "Fixed vLLM 0.31.0 frontend stop-buffer replay and Core check_stop after resume admission; no serving behavior change",
+    "focused_passed": 32,
+    "light": {
+      "passed": 717,
+      "skipped": 21,
+      "failed": 0,
+      "elapsed_seconds": 134.97
+    },
+    "complementary": {
+      "passed": 77,
+      "skipped": 0,
+      "failed": 0,
+      "elapsed_seconds": 19.49,
+      "all_21_light_skips_covered": true
+    },
+    "source_files": 18,
+    "new_source": "vllm/v1/core/sched/utils.py",
+    "source_identity": "SHA256 pinned after matching the installed vLLM 0.31.0 distribution RECORD from the verified server deployment; no engine import",
+    "coverage": [
+      "Every unfinished split and repeated frontend restores for stop strings",
+      "ASCII, Unicode and overlapping stop strings",
+      "min_tokens, include_stop_str_in_output, both logprob layouts",
+      "Length termination flushes buffered text",
+      "Natural completion is not resubmitted",
+      "Real Request/check_stop for EOS, explicit stop IDs, ignore_eos and original output/context limits under sync/async resume admission"
+    ],
+    "gpu_used": false,
+    "limitations": "Tokens and character decoding are test inputs. No model tokenizer, GPU sampler EOS/min-token masking, full scheduler or HTTP stopping qualification. Existing GPU runtime remains 6938fe1.",
+    "evidence_location": "External engine-upgrade-20261112/continuation-stop-cpu",
+    "xml_sha256": {
+      "focused.xml": "b88a54c508df883446d90f651b9fe2e82d938a072faf887d8a2c4a0c732242e4",
+      "light.xml": "a1f23d4cdff2429272693a295c959f6495c8d0c7560042f1072ba54b675f3a63",
+      "torch.xml": "446ef17e798e81c7939f5bd63aebb52efebbccde353b281eb3b4943634f9a375"
+    },
+    "test_sha256": "d4a630be6b26c99e4f038aac7440d1512074e6dcab35d28fb111ad01cc175b19"
+  },
   "continuation_ray_rpc_repair_20261112": {
     "commit": "6938fe106868ca9ef4619a3ffb83473babff39bd",
     "status": "CPU repair and real GPU bounded continuation passed; stage review pending",
