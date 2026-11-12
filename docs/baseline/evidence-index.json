@@ -703,6 +703,49 @@
     "evidence_location": "External engine-upgrade-20261111/continuation-candidate/server-evidence; local/server archive hashes verified",
     "acceptance_boundary": "Deployment and CPU preparation only. Rebuilt native binaries require fresh GPU qualification. No real engine construction, model export/restore, same-request HTTP continuation, GPU release, Transformers full-model/LoRA/training/embedding, TP2, graph, performance or final-image qualification."
   },
+  "continuation_failure_evidence_cpu_20261112": {
+    "status": "Failure-evidence repair passed CPU checks; uncommitted review candidate, not deployed; numerical mismatch unresolved",
+    "source_base_commit": "b7f65c8",
+    "changed_file_sha256_raw_bytes": {
+      "scripts/baseline/continuation_evidence.py": "eb9793196764fdf044b67c9e54de4524bf1dd4ff4ad5e0bbd27b1d7493164da3",
+      "scripts/baseline/qualify_continuation.py": "2b55efb6abc3f871cb2714fed17a443121eaef15fc01ba812e3df767e4b53f0e",
+      "tests/baseline/test_continuation_flow.py": "6e123e33ec1e90c2ce5ad3fba32c55f7e0d5b30bd2a421dc50f3a380d57428f8",
+      "tests/baseline/test_continuation_evidence.py": "89f93c6c8fd20862251f6fbccb87ecc49e14fc20e6d216ae0475845cfa3bdb06"
+    },
+    "regression_before_fix": "Six new cases failed: comparison inputs were not on disk before validation, and mismatch exceptions contained no exact difference details",
+    "light_cpu": {"passed": 630, "failed": 0, "skipped": 21, "elapsed_seconds": 116.23},
+    "tensor_and_transformers_cpu": {"passed": 77, "failed": 0, "skipped": 0, "elapsed_seconds": 24.50},
+    "skip_reconciliation": "All 21 light-profile Torch skips matched by classname and test name to fresh passing cases in the complementary run; zero unresolved dependency skips",
+    "static_checks": "Ruff 0.6.9 format and lint passed for all four changed Python files; JSON parsing and git diff --check passed",
+    "evidence_location": "External engine-upgrade-20261112/continuation-gpu-repair/evidence-repair-light.xml and evidence-repair-torch.xml",
+    "compatibility": "Persist diagnostic comparison inputs before validation and preserve exact mismatch details. Strict equality, ordinary serving responses, sampling parameters and cleanup ownership unchanged.",
+    "gpu_used": false,
+    "acceptance_boundary": "CPU qualification of failure evidence only; does not repair or qualify the unexplained cross-request GPU logprob differences"
+  },
+  "continuation_gpu_20261112_083638": {
+    "status": "Failed strict full-output comparison; no continuation qualification",
+    "commit": "f73b5a1d1aa362ba15ff8ba578b04ed4f5cbc1f7",
+    "server": "inspur-gpu-12 (192.168.5.188)",
+    "resource_request": "soft lock GPU 1,2",
+    "elapsed_seconds_including_release": 210.4093999862671,
+    "coverage": "Private Store, worker mapping and baseline HTTP passed; all 21 greedy HTTP attempts returned 200; three requests were frozen and activated at target; strict output/control comparison failed before seeded multi-choice and later cache/ledger checks",
+    "failure": "ValueError: Full output tokens/text/logprobs differ from the control. Previous first-prefill assertion did not recur.",
+    "evidence_gap": "Official reference history and final target history were only assigned after successful validation, so both are absent from the failed scenario record",
+    "retained_evidence_analysis": {
+      "comparison": "Supplemental comparison with an earlier same-parameter nonmigrated HTTP request, not the missing official reference",
+      "frozen_output_lengths": [194, 317, 256],
+      "preserved": "All three frozen text prefixes and per-token logprobs exactly match the corresponding prefixes of final HTTP responses",
+      "observed": "All three migrated responses have matching final text, finish reason and usage against the supplemental control, but differing logprobs; 17 other nonmigrated responses also differ in logprobs. Differences already exist in frozen source prefixes.",
+      "limitation": "Does not establish complete token equality or the cause of the official comparison failure. Numerical execution/batching remains an unproven hypothesis; no tolerance or comparison relaxation applied.",
+      "report": "retained-comparison.json"
+    },
+    "resource_release": "soft unlock GPU 1,2",
+    "cleanup": "Task unit inactive, no remaining owned PIDs or GPU compute processes; GPU 1 memory 0 MiB and GPU 2 memory 1 MiB; platform reservation unchanged",
+    "sampled_peak_gpu_mib": {"1": 2415, "2": 2415},
+    "evidence_location": "External engine-upgrade-20261112/continuation-gpu-repair/evidence-20261112-083638",
+    "evidence_archive_sha256": "faec869293d9c3c3effc19f3f81cf3eb185dc48c097fab7c2ea114ffb15d270b",
+    "archive_hash_verified": true
+  },
   "continuation_repair_server_cpu_20261112": {
     "status": "Repaired candidate deployed and CPU preflight passed; GPU continuation rerun pending explicit approval",
     "commit": "f73b5a1d1aa362ba15ff8ba578b04ed4f5cbc1f7",

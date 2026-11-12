@@ -365,6 +365,9 @@ async def exercise_scenario(
         "attempts": attempts,
         "source": source_identity,
         "source_instance": source_id,
+        "reference": reference,
+        "reference_history": reference_history,
+        "active_observations": observations,
     }
     result["scenarios"].append(scenario_evidence)
 
@@ -402,6 +405,7 @@ async def exercise_scenario(
         return state
 
     try:
+        write(output / "continuation-result.json", result)
         await base.wait_until(
             observe,
             lambda active: any(any(lengths) for lengths in active.values()),
@@ -464,6 +468,18 @@ async def exercise_scenario(
             item["request_id"]: item
             for item in await target.__ray_call__.remote(backend_history)
         }
+        # Preserve all comparison inputs before assertions or actor cleanup.
+        # A rejected candidate must be as diagnosable as a successful one.
+        scenario_evidence.update(
+            epoch=epoch,
+            frozen=source_batch,
+            prepared=target_batch,
+            resumed=resumed,
+            target=target_identity,
+            target_instance=target_id,
+            final_history=history,
+        )
+        write(output / "continuation-result.json", result)
         resumed_ids = {event["request_id"] for event in resumed}
         if not source_snapshots or not set(source_snapshots) <= resumed_ids:
             raise RuntimeError(
@@ -480,16 +496,25 @@ async def exercise_scenario(
                 raise RuntimeError(
                     "Original HTTP request did not complete successfully"
                 )
-            report = validate_case(
-                attempt["request"],
-                attempt["response"],
-                frozen_request,
-                target_snapshots[request_id],
-                history[request_id],
-                reference,
-                reference_history,
-                require_generated_prefix=False,
-            )
+            try:
+                report = validate_case(
+                    attempt["request"],
+                    attempt["response"],
+                    frozen_request,
+                    target_snapshots[request_id],
+                    history[request_id],
+                    reference,
+                    reference_history,
+                    require_generated_prefix=False,
+                )
+            except Exception as exc:
+                scenario_evidence["validation_error"] = {
+                    "request_id": request_id,
+                    "type": type(exc).__name__,
+                    "message": str(exc),
+                }
+                write(output / "continuation-result.json", result)
+                raise
             validated.append(
                 {
                     "scenario": scenario,
@@ -499,18 +524,6 @@ async def exercise_scenario(
                 }
             )
         result["cases"].extend(validated)
-        scenario_evidence.update(
-            epoch=epoch,
-            active_observations=observations,
-            frozen=source_batch,
-            prepared=target_batch,
-            resumed=resumed,
-            target=target_identity,
-            target_instance=target_id,
-            final_history={key: history[key] for key in source_snapshots},
-            reference=reference,
-            reference_history=reference_history,
-        )
         settled = await base.wait_until(
             routing,
             lambda value: value["request_count"]

@@ -111,6 +111,35 @@ def test_complete_tokens_choices_logprobs_and_usage_match(case):
     assert case == before
 
 
+@pytest.mark.parametrize(
+    "field,path,value",
+    [
+        ("text", ["text"], "AB different"),
+        ("logprobs", ["logprobs", 2, "22", "logprob"], -0.10000001),
+        ("cumulative_logprob", ["cumulative_logprob"], -0.40000001),
+        ("stop_reason", ["stop_reason"], 999),
+    ],
+)
+def test_control_mismatch_identifies_exact_field_without_tolerance(
+    case, field, path, value
+):
+    actual = case["final_history"]["choices"][0]
+    if field == "logprobs":
+        actual[field][2][22]["logprob"] = value
+    else:
+        actual[field] = value
+    before = copy.deepcopy(case)
+    with pytest.raises(ValueError, match="Full output") as error:
+        evidence.validate_case(**case)
+    detail = json.loads(str(error.value).split(": ", 1)[1])
+    assert detail["request_id"] == "inflight"
+    assert detail["choice_index"] == 0
+    assert detail["difference"]["path"] == path
+    assert detail["difference"]["actual"] == value
+    assert detail["difference"]["actual"] != detail["difference"]["control"]
+    assert case == before
+
+
 def test_one_finished_choice_is_not_resampled(case):
     case["source_snapshot"]["choices"][1] = copy.deepcopy(
         case["final_history"]["choices"][1]

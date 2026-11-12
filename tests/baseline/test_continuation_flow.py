@@ -533,3 +533,66 @@ async def test_failure_observes_and_releases_late_allocation(flow_factory):
     finally:
         flow.late_allocation.set()
         await asyncio.gather(task, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scenario", ["greedy", "seeded-multi"])
+@pytest.mark.parametrize("position", [0, 2])
+async def test_failed_comparison_keeps_inputs_before_validation_and_cleanup(
+    flow_factory, monkeypatch, scenario, position
+):
+    flow, result = flow_factory(), result_state()
+    original_history = flow.history
+
+    def divergent_history(request, *, frozen=False):
+        history = original_history(request, frozen=frozen)
+        rows = history["choices"][0]["logprobs"]
+        if not request["request_id"].endswith("-reference") and position < len(
+            rows
+        ):
+            rows[position][1000 + position]["logprob"] = -0.125
+        return history
+
+    monkeypatch.setattr(flow, "history", divergent_history)
+    validate = flow.evidence.validate_case
+    captured = []
+
+    def inspect_checkpoint(*args, **kwargs):
+        checkpoint = json.loads(
+            (flow.output / "continuation-result.json").read_text()
+        )["scenarios"][0]
+        assert checkpoint["reference"] == args[5]
+        assert checkpoint["reference_history"] == json.loads(
+            json.dumps(args[6])
+        )
+        request_id = args[0]["request_id"]
+        assert (
+            checkpoint["final_history"][request_id]["choices"][0]["logprobs"][
+                position
+            ][str(1000 + position)]["logprob"]
+            == -0.125
+        )
+        assert len(checkpoint["frozen"]["requests"]) == 3
+        assert (
+            checkpoint["prepared"]["requests"]
+            == checkpoint["frozen"]["requests"]
+        )
+        assert len(checkpoint["resumed"]) == 3
+        assert checkpoint["target"]["pid"] == 202
+        assert checkpoint["epoch"] == "cpu-epoch"
+        captured.append(request_id)
+        return validate(*args, **kwargs)
+
+    monkeypatch.setattr(flow.evidence, "validate_case", inspect_checkpoint)
+    with pytest.raises(ValueError, match="Full output"):
+        await asyncio.wait_for(flow.run(scenario, result), 5)
+    saved = json.loads((flow.output / "continuation-result.json").read_text())
+    failure = saved["scenarios"][0]["validation_error"]
+    assert failure["request_id"] == captured[0]
+    assert failure["type"] == "ValueError"
+    assert "Full output" in failure["message"]
+    assert not saved["cases"]
+    assert not saved["checks"].get("same_http_continuation")
+    assert len(flow.deallocated) == 1 and not flow.reservations
+    assert flow.router.request_count == flow.target_handle.concurrency == 0
+    assert len(flow.posts) == len(set(flow.posts)) == 4

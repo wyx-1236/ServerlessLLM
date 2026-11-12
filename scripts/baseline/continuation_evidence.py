@@ -23,6 +23,38 @@ def _canonical(value):
     return value
 
 
+def _first_difference(actual, control, path=()):
+    """Locate an exact mismatch in already canonicalized evidence."""
+    if actual == control:
+        return None
+    if isinstance(actual, dict) and isinstance(control, dict):
+        for key in sorted(actual.keys() | control.keys()):
+            if key not in actual or key not in control:
+                return {
+                    "path": [*path, key],
+                    "actual_present": key in actual,
+                    "control_present": key in control,
+                    "actual": actual.get(key),
+                    "control": control.get(key),
+                }
+            difference = _first_difference(
+                actual[key], control[key], (*path, key)
+            )
+            if difference is not None:
+                return difference
+    if isinstance(actual, list) and isinstance(control, list):
+        for index, (left, right) in enumerate(zip(actual, control)):
+            difference = _first_difference(left, right, (*path, index))
+            if difference is not None:
+                return difference
+        return {
+            "path": list(path),
+            "actual_length": len(actual),
+            "control_length": len(control),
+        }
+    return {"path": list(path), "actual": actual, "control": control}
+
+
 def _json_object(pairs):
     result = {}
     for key, value in pairs:
@@ -382,10 +414,17 @@ def validate_case(
             )
             resumed.append(initial["index"])
             source_had_output = source_had_output or bool(old)
-        _require(
-            _canonical(completed) == _canonical(control),
-            "Full output tokens/text/logprobs differ from the control",
-        )
+        actual, expected = _canonical(completed), _canonical(control)
+        if actual != expected:
+            detail = {
+                "request_id": request_id,
+                "choice_index": completed["index"],
+                "difference": _first_difference(actual, expected),
+            }
+            raise ValueError(
+                "Full output tokens/text/logprobs differ from the control: "
+                + json.dumps(detail, ensure_ascii=False)
+            )
     _require(resumed, "No unfinished choice continued on the target")
     if require_generated_prefix:
         _require(
