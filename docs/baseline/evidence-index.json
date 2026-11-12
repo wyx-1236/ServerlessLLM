@@ -675,6 +675,34 @@
       "Complete project compatibility or final acceptance"
     ]
   },
+  "continuation_server_cpu_20261111": {
+    "status": "Server deployment and no-GPU preflight passed; user review pending; no GPU runtime qualification",
+    "commit": "c3af9088dc239dcfa6a317502bcfa7efd20daac6",
+    "server": "inspur-gpu-12",
+    "deployment_directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2-c3af908-20261111/source",
+    "source_archive_sha256": "80542efa36178ea4d2eb778abcbb68201b6d8a5922d5b5002f5b33e3380dd5aa",
+    "source_validation": "352 archived files and symlink payloads match committed Git blobs byte-for-byte; core.autocrlf=false; rechecked after build and tests",
+    "dependency_lock_sha256": "b95c64f6357b653f3e1e45e7dddfe4b3efdcd8f9ae9ef926fce82dd7be025ec0",
+    "environment": "Python 3.12.13; 222 locked dependencies plus two locally built wheels; uv frozen check and 224-package dependency compatibility check passed",
+    "main_wheel_sha256": "0bcbc6688dc0f9f10283c6cc9b8a57d29ef2218de2a7a0bb1c4bceaf456d9575",
+    "store_wheel_sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
+    "server_tests": {"passed": 275, "failed": 0, "skipped": 0, "elapsed_seconds": 17.83},
+    "additional_checks": [
+      "Installed lazy preparation/Worker modules, main compatibility shim and packaged lock receipt",
+      "Ten pinned vLLM source files match the committed fixture hashes",
+      "Native extensions load; seven CPU writer boundary sizes and alias/padding checks pass",
+      "Installed CLI help/options and private gRPC/protobuf roundtrip pass",
+      "Historical Qwen Store artifact integrity passes; no restore performed"
+    ],
+    "isolation": "No GPU device nodes; CUDA_VISIBLE_DEVICES empty; CUDA remains uninitialized; build/probes use private offline network namespaces",
+    "recovered_failures": "VPN connectivity, archive newline conversion, cache paths and SSH session lifetime corrected. Initial Ray CPU run timed out because hostname resolution selected the external IP inside a private network; namespace-local hosts mapping fixed it without production or global network changes. Failed attempts retained.",
+    "cleanup": "All task CPU units inactive/failed with MainPID=0 and no remaining owned processes; no GPU lock or unlock performed",
+    "gpu_used": false,
+    "evidence_archive": "server-cpu-evidence.tgz",
+    "evidence_archive_sha256": "0a94e4544480ad2dd8535c5128fda72d82ad88ebd41257ce87a8777f570b8e95",
+    "evidence_location": "External engine-upgrade-20261111/continuation-candidate/server-evidence; local/server archive hashes verified",
+    "acceptance_boundary": "Deployment and CPU preparation only. Rebuilt native binaries require fresh GPU qualification. No real engine construction, model export/restore, same-request HTTP continuation, GPU release, Transformers full-model/LoRA/training/embedding, TP2, graph, performance or final-image qualification."
+  },
   "continuation_cpu_candidate_20261111": {
     "status": "CPU candidate passed; no GPU continuation qualification",
     "source_base_commit": "119a1a82de5bf21e60e4dee836ef109d33587be8",

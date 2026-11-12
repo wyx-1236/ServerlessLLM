@@ -99,9 +99,12 @@
     "engine_version": "0.31.0",
     "model_runner": "V2 required for request migration; unsupported configurations fail before freezing",
     "adapter_scope": "Instance-local frontend/Core submission wrappers and configured sync/async scheduler subclasses; no upstream wheel patch",
-    "dependency_lock_sha256": "26a4ea25fe806d69447ce1cd567f0a9b5ebcbf7994c39a83c2f7679da697a44f",
+    "dependency_lock_sha256": "b95c64f6357b653f3e1e45e7dddfe4b3efdcd8f9ae9ef926fce82dd7be025ec0",
+    "dependency_lock_identity_note": "Canonical LF Git blob and Linux deployment digest. The previous 26a4ea25fe806d69447ce1cd567f0a9b5ebcbf7994c39a83c2f7679da697a44f digest described the Windows CRLF worktree; dependency contents did not change.",
     "source_checks": "tests/baseline/fixtures/vllm-0.31.0-resume-source.json",
     "cpu_evidence": "evidence-index.json#continuation_cpu_candidate_20261111",
-    "runtime_status": "unqualified"
+    "runtime_status": "GPU runtime unqualified; server deployment and CPU preflight passed",
+    "server_deployment_commit": "c3af9088dc239dcfa6a317502bcfa7efd20daac6",
+    "server_cpu_evidence": "evidence-index.json#continuation_server_cpu_20261111"
   }
 }
