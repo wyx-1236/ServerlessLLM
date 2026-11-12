@@ -13,6 +13,7 @@ D1 迁移链和 D2 两个限定续写场景已实测，阶段 D 审查及剩余�
 - [原版功能与规范核查](original-function-audit.md)：项目承诺、两个后端的迁移续写差异及全项目兼容缺口。
 - [迁移续写兼容方案](migration-continuation-proposal.md)：原版核查后的修订候选，保持既有功能，等待用户审查。
 - [活动请求恢复与交接增补](migration-continuation-engine-plan.md)：固定版本引擎恢复、请求所有权和 CPU/GPU 验证边界。
+- [EOS/停止字符串实机验收增补](migration-stopping-qualification-plan.md)：下一组场景与跨冻结边界证据要求，待批准实施，不包含 GPU 授权。
 - [Linux 环境](environment.md)：依赖锁、CPU 检查及候选镜像配方。
 - [服务生命周期](service-lifecycle.md)：后端/控制面所有权、关闭和手动限定验证入口。
 - [迁移生命周期执行计划](migration-lifecycle-plan.md)：D1 原版调用链和资源回收的 scoped delta；不是已验证迁移资格。
