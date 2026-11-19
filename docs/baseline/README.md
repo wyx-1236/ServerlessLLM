@@ -1,66 +1,40 @@
-# ServerlessLLM-vLLM Baseline 工程入口
+# vLLM 0.31.0 upgrade: code review map
 
-本目录只保存维护所需的设计、安装、契约、兼容范围和精简证据索引。
-过程方案、历史审计和详细实验记录保存于仓库外的研究归档。目标为 vLLM 0.31.0；
-阶段 B 的原生 Store 流水线与阶段 C 的限定服务链已实测并通过用户阶段审查；
-D1 迁移链和 D2 两个限定续写场景已实测，阶段 D 审查及剩余边界、TP2 和模型/性能矩阵仍待完成。
+This branch contains runtime integration and required build changes. Research
+plans, qualification runners, test changes, dependency locks and detailed run
+records are maintained separately and excluded from this branch's diff.
+This separation does not establish new runtime or GPU qualification.
 
-- [权威升级设计](engine-upgrade.md)：架构、兼容边界、阶段与验证要求。
-- [兼容范围](compatibility-matrix.md)：已验证事实与明确缺口。
-- [来源清单](provenance.json)：原始提交、分支和候选引擎身份。
-- [历史证据索引](evidence-index.json)：外部归档摘要及适用范围。
-- [Linux 环境](environment.md)：依赖锁、CPU 检查及候选镜像配方。
-- [服务生命周期](service-lifecycle.md)：后端/控制面所有权、关闭和手动限定验证入口。
-- [Store 产物契约](store-artifact.md)：字节布局、逻辑张量视图和提交/复用校验。
+| Area | Files | Purpose |
+| --- | --- | --- |
+| Engine configuration | `sllm/backends/vllm_config.py`, `vllm_compat.py` | Map legacy configuration and adapt the pinned async engine API |
+| Backend lifecycle | `sllm/backends/vllm_backend.py` | Generation, cancellation, drain and shutdown |
+| Store preparation | `sllm_store/sllm_store/vllm_preparation.py`, `vllm_prepare_worker.py`, `vllm_export.py` | Export, validate and commit artifacts before registration |
+| Store restore | `sllm_store/sllm_store/vllm_plugin.py`, `vllm_loader.py`, `artifact.py`, `tensor_layout.py` | Restore tensors, buffers and shared storage |
+| Native I/O | `sllm_store/csrc/checkpoint/`, `csrc/sllm_store/partition_reader.h`, `model.cpp` | Writer completion and aligned partition reads |
+| Control-plane compatibility | `sllm/controller.py`, `routers/`, `schedulers/`, `store_manager.py` | Request, actor and reservation ownership across load/migration/failure |
+| Active-request continuation | `sllm/backends/vllm_migration.py`, `vllm_resume_adapter.py`, `vllm_resume_scheduler.py` | Freeze, snapshot, prepare, resume, commit and roll back migrating requests |
+| Transformers compatibility | `sllm/backends/transformers_backend.py` | Adapt replay caches and continuation budgets/EOS to upgraded shared dependencies |
+| Diagnostics | `sllm/backends/vllm_qualification.py` | Opt-in numerical inspection for external qualification runners |
+| Packaging | Root/Store requirements, `pyproject.toml`, `setup.py`, `build_support.py` | Dependencies, plugin discovery and package provenance |
 
-## 仓库与部署身份
+Continuation and shared-control-plane changes are broader than replacing vLLM
+imports. They remain explicit review areas. The original token replay mechanism
+is retained rather than transferring KV tensors between GPUs.
 
-用户 Fork：[wyx-1236/ServerlessLLM](https://github.com/wyx-1236/ServerlessLLM)。
-`origin` 指向用户 Fork，`upstream` 指向官方仓库。`codex/baseline-vllm` 是集成
-分支，`codex/vllm-upgrade` 是升级分支，均从
-`9f50241baa5386e06a9321c51f19a9ef5f964c2b` 起步。PR 向自己的集成分支提出，
-不默认向官方提交。
+## Dependency identity
 
-当前提供无 GPU 的环境/契约检查入口；阶段 B 的 Qwen3-0.6B BF16/TP1/eager
-原生导出与独立禁网 native Store 恢复已实测通过，执行身份和限制见
-[兼容范围](compatibility-matrix.md)。阶段 C 在提交 `1478c0a` 上完成 13 项限定服务/生命周期检查；入口为
-`scripts/baseline/qualify_service.py`，必须由获批的有界隔离 runner 执行，
-具体前提见 [服务生命周期](service-lifecycle.md)。这不是最终 serving 镜像或通用部署资格；部署绑定确定 commit/tag。
-模型权重、Store 产物、依赖缓存和大型结果保存在工程外，不纳入 Git。
+The original full lock is kept with the external qualification snapshot.
+`sllm_store/sllm_store/preparation-lock.sha256` retains its canonical SHA256 so
+source builds and installed wheels keep the same preparation identity without
+requiring that lock in this branch. The receipt is an identity, not a dependency
+resolver or a new validation result. Package requirements remain in this branch.
 
-D1 迁移候选已修复 Router/调度器的请求、actor 和预留所有权，并通过 356 项
-CPU baseline 检查。提交 `54d099e` 已完成双卡原版迁移链与回滚的 13 项限定检查，
-阶段报告等待用户审查，整体验收未完成。手动入口为
-`scripts/baseline/qualify_migration.py`，详见
-[迁移候选边界](service-lifecycle.md#d1-migration-candidate-bounded-checks-passed-review-pending)。
+## Qualification limits
 
-D2 提交 `6938fe1` 已通过 greedy 和 seeded-multi 同请求续写：5 个已有输出请求、
-7 个 choice 严格匹配对照，并完成独立资源释放。此结果仅覆盖显式
-`batch-invariant-v1` 下的 Qwen3-0.6B BF16/TP1/eager/V2/FLASH_ATTN；普通默认
-计算配置及其他迁移边界不继承此资格。见[限定实机证据](evidence-index.json#continuation_gpu_20261112_113642)，
-等待用户阶段审查。
-
-## 必须保留的执行关卡
-
-阶段内按“改一部分、检查一部分、汇报一部分”的顺序推进。每次在聊天中逐文件
-说明改动、作用、前后行为、验证结果、兼容影响和未完成项，再进行下一部分；
-具体要求见根目录 AGENTS.md 和[升级设计](engine-upgrade.md)。
-
-每阶段完成后，在当前协作聊天中提交报告，等用户明确审查通过才开始下一阶段。
-报告列明改动、产物/commit、验证及缺失、方向偏差、资源状态和下一阶段范围。
-审查期间不启动下一阶段工作；修订后重新报告。
-
-申请服务器 GPU 前必须报告实际服务器、全部物理 GPU 索引、hard/soft 锁模式、
-用途、范围与时长，等待明确批准。包含导出转换、CUDA 导入探针和测试。
-资源请求/释放分别使用 `hard lock GPU 0,1` / `hard unlock GPU 0,1` 格式，
-实际索引逐一列出；soft 模式相应替换。结束或失败时先清理本任务进程和资源，
-核验后报告释放状态，等待用户确认再继续任何项目工作。空闲卡不等于获批。
-
-继承的 GPU workflow 不得通过标签、手工触发、runner 注册或后台作业绕过上述
-审批。运行证据分别记录获批 GPU 批次；未通过 workflow 或 self-hosted runner 绕过审批。
-
-## 与其他工程的边界
-
-SLLM 后端、Store、测试和部署说明由此 Fork 拥有；CrossPool 的生产架构与
-引擎迁移不属于本仓库改造。共同实验使用相同冻结 workload 和物理预算，
-不要求合并运行环境。个人阶段报告另存研究知识库；不发布金山团队文档。
+Prior bounded Store/service evidence covers Qwen3-0.6B BF16/TP1/eager.
+Same-request continuation evidence covers only the explicitly tested setup,
+including its opt-in batch-invariant numerical profile. EOS/stop continuation,
+Transformers runtime regression, TP2, broader models, performance and the final
+serving image must not be inferred from those passes. Original upstream tests
+are unchanged here; upgrade-specific tests/runners remain in the external snapshot.

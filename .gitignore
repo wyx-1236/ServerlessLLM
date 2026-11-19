@@ -238,3 +238,10 @@ Temporary Items
 /artifacts/
 /results/
 /tmp/
+
+# Upgrade validation materials live outside the runtime review branch.
+/uv.lock
+/tests/baseline/
+/scripts/baseline/
+/docs/baseline/*
+!/docs/baseline/README.md

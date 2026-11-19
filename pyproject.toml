@@ -27,11 +27,6 @@ environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
 serverless-llm-store = {path = "sllm_store"}
 
 [dependency-groups]
-cpu = [
-    "pytest==8.4.2", "pytest-asyncio==1.2.0", "packaging==25.0",
-    "ray==2.48.0", "fastapi>=0.133.0,<0.137.0", "httpx>=0.27.0",
-    "click>=8.4.2,<9", "openai>=2.25.0,<3",
-]
 build = ["cmake>=3.20,<4", "ninja", "setuptools>=77.0.3,<81", "wheel>=0.45,<1"]
 
 

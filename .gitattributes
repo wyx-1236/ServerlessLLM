@@ -1,5 +1,0 @@
-# Generated dependency closures are required for reproducible CI.
-# GitHub collapses their diffs by default; reviewers can expand them.
-uv.lock linguist-generated=true
-tests/baseline/requirements-tensor-cpu.txt linguist-generated=true
-tests/baseline/requirements-transformers-cpu.txt linguist-generated=true
