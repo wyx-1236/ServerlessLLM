@@ -108,26 +108,6 @@ def _request_tokens(output, input_tokens=None):
     return tokens
 
 
-class LLMEngineStatusDict:
-    """Compatibility view of active requests, separate from debug history."""
-
-    def __init__(self, active, lock):
-        self.status_dict = active
-        self.lock = lock
-
-    async def return_all_results(self):
-        async with self.lock:
-            return [record["output"] for record in self.status_dict.values()]
-
-    async def return_all_request_ids(self):
-        async with self.lock:
-            return list(self.status_dict)
-
-    async def request_count(self):
-        async with self.lock:
-            return len(self.status_dict)
-
-
 class VllmBackend(NumericalQualificationMixin, VllmMigration, SllmBackend):
     def __init__(
         self, model: str, backend_config: Optional[Dict[str, Any]] = None
@@ -142,9 +122,6 @@ class VllmBackend(NumericalQualificationMixin, VllmMigration, SllmBackend):
         self.engine = None
         self.active_requests = {}
         self.request_history = {}
-        self.request_trace = LLMEngineStatusDict(
-            self.active_requests, self.status_lock
-        )
         self._drained = asyncio.Event()
         self._drained.set()
         self._close_task = None
@@ -156,12 +133,7 @@ class VllmBackend(NumericalQualificationMixin, VllmMigration, SllmBackend):
         async with self.status_lock:
             if self.status != BackendStatus.UNINITIALIZED:
                 return
-            try:
-                self.engine = vllm_compat.create(self.engine_args)
-            except BaseException:
-                await vllm_compat.close(self.engine)
-                self.engine = None
-                raise
+            self.engine = vllm_compat.create(self.engine_args)
             self.status = BackendStatus.RUNNING
 
     async def _admit(

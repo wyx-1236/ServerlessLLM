@@ -315,28 +315,20 @@ class ArtifactTransaction:
                 "manifest_sha256": _digest(self.path / MANIFEST),
             },
         )
-        validate_artifact(self.path, identity)
-        # Exporters serialize publication; this lock never claims GPU resources.
-        lock = self.target.with_name(f".{self.target.name}.publish-lock")
-        lock.mkdir()
-        try:
-            if self.target.exists() or self.target.is_symlink():
-                raise FileExistsError(self.target)
-            for payload in self.path.rglob("*"):
-                if payload.is_file():
-                    # Windows FlushFileBuffers requires a writable descriptor.
-                    mode = "r+b" if os.name == "nt" else "rb"
-                    with payload.open(mode) as stream:
-                        os.fsync(stream.fileno())
-            for directory in self.path.rglob("*"):
-                if directory.is_dir():
-                    _sync_directory(directory)
-            _sync_directory(self.path)
-            _publish_no_replace(self.path, self.target)
-            self._committed = True
-            _sync_directory(self.target.parent)
-        finally:
-            lock.rmdir()
+        for payload in self.path.rglob("*"):
+            if payload.is_file():
+                # Windows FlushFileBuffers requires a writable descriptor.
+                mode = "r+b" if os.name == "nt" else "rb"
+                with payload.open(mode) as stream:
+                    os.fsync(stream.fileno())
+        for directory in self.path.rglob("*"):
+            if directory.is_dir():
+                _sync_directory(directory)
+        _sync_directory(self.path)
+        # The atomic no-replace rename arbitrates concurrent publishers.
+        _publish_no_replace(self.path, self.target)
+        self._committed = True
+        _sync_directory(self.target.parent)
         return manifest
 
     def __exit__(self, *_):

@@ -1,6 +1,5 @@
 """The only vLLM 0.31.0 construction and lifecycle compatibility boundary."""
 
-import inspect
 import json
 import os
 from dataclasses import fields
@@ -60,27 +59,17 @@ def engine_args(model, config):
             raise ValueError("Conflicting Store artifact identity")
         if extra.get("store_root", str(root)) != str(root):
             raise ValueError("Conflicting Store store_root")
-        address = extra.get("store_address")
-        if not isinstance(address, str) or not address.startswith("127.0.0.1:"):
-            raise ValueError("store_address must specify a local private Store")
-        try:
-            port = int(address.split(":")[1])
-        except ValueError as error:
-            raise ValueError("Invalid Store port") from error
-        if not 0 < port < 65536 or address != f"127.0.0.1:{port}":
-            raise ValueError("Invalid Store port")
         projected["model"] = str(path)
         projected["model_loader_extra_config"] = dict(
             artifact_path=str(path),
             identity=identity,
-            store_address=address,
+            store_address=extra.get("store_address"),
             store_root=str(root),
         )
     args = vllm.AsyncEngineArgs(**projected)
-    if hasattr(args, "scheduler_cls"):
-        from sllm.backends.vllm_resume_adapter import configure_args
+    from sllm.backends.vllm_resume_adapter import configure_args
 
-        configure_args(args)
+    configure_args(args)
     return args
 
 
@@ -92,9 +81,7 @@ async def abort(engine, request_id):
 async def close(engine):
     if engine is None:
         return
-    result = engine.shutdown()
-    if inspect.isawaitable(result):
-        await result
+    engine.shutdown()
 
 
 def create(args):
@@ -111,12 +98,11 @@ def create(args):
                 raise
 
     engine = OwnedEngine.from_engine_args(args)
-    if hasattr(engine, "output_processor"):
-        from sllm.backends.vllm_resume_adapter import install
+    from sllm.backends.vllm_resume_adapter import install
 
-        try:
-            install(engine)
-        except BaseException:
-            engine.shutdown()
-            raise
+    try:
+        install(engine)
+    except BaseException:
+        engine.shutdown()
+        raise
     return engine

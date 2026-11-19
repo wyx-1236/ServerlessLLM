@@ -325,7 +325,9 @@ def prepare_vllm_model(
         or options["tensor_parallel_size"] != tensor_parallel_size
     ):
         raise ValueError("Preparation engine identity conflict")
-    from sllm_store.vllm_prepare_worker import SAMPLING, STORE, validate_request
+    if options["distributed_executor_backend"] != "mp":
+        raise ValueError("Only mp executor supported")
+    from sllm_store.vllm_prepare_worker import SAMPLING, STORE
 
     validation = (
         validation
@@ -336,6 +338,13 @@ def prepare_vllm_model(
             logprob_atol=0,
         )
     )
+    if validation["sampling"] != SAMPLING or validation["logprob_atol"] != 0:
+        raise ValueError(
+            "Validation sampling/tolerance must match frozen profile"
+        )
+    prompts = validation["prompts"]
+    if not prompts or not all(isinstance(p, str) and p for p in prompts):
+        raise ValueError("Validation requires nonempty raw prompts")
     # Freeze JSON values, including caller-owned nested dictionaries.
     options, validation = json.loads(
         json.dumps(
@@ -498,7 +507,6 @@ def prepare_vllm_model(
         )
 
         def launch(mode, request, isolated=False):
-            validate_request(mode, request)
             path = records / f"{mode}-request.json"
             _write_record(path, request)
             command = [

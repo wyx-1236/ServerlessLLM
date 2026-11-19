@@ -32,142 +32,7 @@ STORE = {
     "chunk_size": 64 * 1024**2,
     "num_thread": 2,
 }
-ENGINE_OPTIONS = {
-    "dtype",
-    "tensor_parallel_size",
-    "max_model_len",
-    "max_num_seqs",
-    "max_num_batched_tokens",
-    "kv_cache_memory_bytes",
-    "enforce_eager",
-    "enable_prefix_caching",
-    "seed",
-    "distributed_executor_backend",
-}
 TOKENIZATION = {"add_special_tokens": True}
-
-
-def _external(path, artifact):
-    candidate = Path(path)
-    if not candidate.is_absolute() or candidate.resolve().is_relative_to(
-        artifact.resolve()
-    ):
-        raise ValueError("Record paths must be absolute and outside artifact")
-    return candidate
-
-
-def validate_request(mode, request):
-    if mode not in {"export", "verify", "store"} or not isinstance(
-        request, dict
-    ):
-        raise ValueError("Invalid worker mode/request")
-    common = {
-        "schema_version",
-        "artifact_path",
-        "identity",
-        "engine_options",
-        "validation",
-        "reference_path",
-        "result_path",
-        "store",
-        "owner_pid",
-        "owner_start_time",
-    }
-    required = common | (
-        {"source_path"}
-        if mode == "export"
-        else {"candidate_manifest", "parent_network_namespace"}
-    )
-    if mode == "store":
-        required = {"schema_version", "artifact_path", "store", "port"}
-    if set(request) != required or request.get("schema_version") != 1:
-        raise ValueError("Unsupported request fields/schema version")
-    artifact = Path(request["artifact_path"])
-    if (
-        not artifact.is_absolute()
-        or not artifact.is_dir()
-        or artifact.is_symlink()
-    ):
-        raise ValueError("artifact_path must be an existing absolute directory")
-    if request["store"] != STORE:
-        raise ValueError("Unsupported private Store budget")
-    if mode == "store":
-        if (
-            type(request["port"]) is not int
-            or not 0 < request["port"] < 65536
-            or request["port"] == 8073
-        ):
-            raise ValueError("Invalid private Store port")
-        return request
-    if (
-        type(request["owner_pid"]) is not int
-        or request["owner_pid"] <= 0
-        or not isinstance(request["owner_start_time"], str)
-        or not request["owner_start_time"].isdigit()
-    ):
-        raise ValueError("Invalid owner process identity")
-    for key in ("reference_path", "result_path"):
-        _external(request[key], artifact)
-    if request["reference_path"] == request["result_path"]:
-        raise ValueError("Reference/result paths must differ")
-    if mode == "export":
-        source = Path(request["source_path"])
-        if not source.is_absolute() or not source.is_dir():
-            raise ValueError("source_path must be an absolute frozen directory")
-    elif not isinstance(request["candidate_manifest"], dict):
-        raise ValueError("Invalid candidate manifest")
-    options = request["engine_options"]
-    if not isinstance(options, dict) or set(options) - ENGINE_OPTIONS:
-        raise ValueError("Unsupported engine options")
-    for key in (
-        "tensor_parallel_size",
-        "max_model_len",
-        "max_num_seqs",
-        "max_num_batched_tokens",
-        "kv_cache_memory_bytes",
-    ):
-        if key in options and (
-            type(options[key]) is not int or options[key] <= 0
-        ):
-            raise ValueError(f"{key} must be a positive integer")
-    for key in ("enforce_eager", "enable_prefix_caching"):
-        if key in options and type(options[key]) is not bool:
-            raise ValueError(f"{key} must be a boolean")
-    if "seed" in options and (
-        type(options["seed"]) is not int or options["seed"] < 0
-    ):
-        raise ValueError("seed must be a nonnegative integer")
-    if options.get("dtype") not in {"bfloat16", "float16", "float32"}:
-        raise ValueError("Explicit supported dtype required")
-    identity = request["identity"]
-    if not isinstance(identity, dict) or options.get(
-        "tensor_parallel_size"
-    ) != identity.get("world_size"):
-        raise ValueError("Engine TP/identity mismatch")
-    if identity.get("dtype") != "torch." + options["dtype"]:
-        raise ValueError("Engine dtype/identity mismatch")
-    if options.get("distributed_executor_backend", "mp") != "mp":
-        raise ValueError("Only mp executor supported")
-    validation = request["validation"]
-    if not isinstance(validation, dict) or set(validation) != {
-        "prompts",
-        "sampling",
-        "logprob_atol",
-    }:
-        raise ValueError("Invalid validation specification")
-    if validation["sampling"] != SAMPLING or validation["logprob_atol"] != 0:
-        raise ValueError(
-            "Validation sampling/tolerance must match frozen profile"
-        )
-    prompts = validation["prompts"]
-    if (
-        not isinstance(prompts, list)
-        or not prompts
-        or not all(isinstance(p, str) and p for p in prompts)
-    ):
-        raise ValueError("Validation requires nonempty raw prompts")
-    json.dumps(request, allow_nan=False)
-    return request
 
 
 def serialize_outputs(outputs):
@@ -572,7 +437,7 @@ def _verify(request):
 
 
 def run(mode, request):
-    validate_request(mode, request)
+    """Execute the private request constructed by the preparation supervisor."""
     if mode == "store":
         from sllm_store.server import serve
 
@@ -585,7 +450,7 @@ def run(mode, request):
                 **request["store"],
             )
         )
-    return _export(request) if mode == "export" else _verify(request)
+    return {"export": _export, "verify": _verify}[mode](request)
 
 
 def parse_process_identity(stat):
@@ -682,7 +547,6 @@ def main():
     parser.add_argument("--request", required=True)
     args = parser.parse_args()
     request = json.loads(Path(args.request).read_text(encoding="utf-8"))
-    validate_request(args.mode, request)
     if args.mode == "verify":
         for name in (
             "HF_HUB_OFFLINE",
