@@ -1,589 +1,153 @@
 {
+  "archive": {
+    "collection": "ServerlessLLM/2026-11-19-911747a",
+    "source_commit": "911747a",
+    "file": "docs/baseline/evidence-index.json",
+    "sha256": "468d589b3a2584d26d8ba5c783f6b170518ee9fbaee7f525fa0ced611fdd82fa",
+    "scope": "Full historical logs are external research records. Each entry below preserves its original evidence key; historical passes do not qualify later code."
+  },
   "stopping_tokenizer_repair_cpu_20261113": {
     "status": "EOS tokenizer serialization repair and isolated real-tokenizer tests passed local and server CPU checks; no GPU use in this repair",
     "commit": "aaf4fa58554b046a49e7d964f93b7131e335fcb3",
     "implementation_commit": "415724f61c111acf36a8468985432e75b7d923e8",
-    "plan": "migration-stopping-qualification-plan.md",
-    "repair": "prepare_reference explicitly sets return_dict=False and validates flat non-negative integer prompt IDs before saving them. Invalid return values retain serializable failure evidence and cannot start HTTP traffic. Real tokenizer CPU tests run in child processes to preserve Ray import isolation.",
-    "local_cpu": {
-      "light_passed": 749,
-      "light_skipped": 23,
-      "complementary_passed": 79,
-      "all_skips_covered": true,
-      "new_tests": 6,
-      "gpu_used": false,
-      "focused_passed": 121,
-      "regression_before_fix": "2 real-tokenizer cases failed with the same BatchEncoding JSON error; 4 malformed-token cases failed before early validation was added",
-      "xml_sha256": {
-        "light.xml": "54e53a9260bb715f3ef28c124a72cb224d66cebd47c692dc64c30aca13bb6986",
-        "torch.xml": "6b00f5655777e5d5efedcd0eb4f98f2e86872b994f367666e8577a53209e8148"
-      }
-    },
-    "local_cpu_identity": "Full light/complementary runs cover 415724f; the final aaf4fa5 change only isolates the real-tokenizer test. Both isolated cases passed again locally, and the complete final candidate passed all server CPU tests below.",
-    "final_local_isolated_tokenizer": {
-      "passed": 2,
-      "failed": 0,
-      "skipped": 0,
-      "xml_sha256": "f8270e2203eb531b8ccccc48eb51670bbd03c45f33a675a471066ad4743235cb"
-    },
-    "static_checks": "Ruff 0.6.9 format/lint and git diff --check passed",
-    "server": "inspur-gpu-12 (192.168.5.188)",
-    "deployment": {
-      "commit": "aaf4fa58554b046a49e7d964f93b7131e335fcb3",
-      "archive_sha256": "96dd2d9a61e1c25ed6f8ef911ca459a55610750dc5dea89bac2d07f7373ce935",
-      "tracked_file_count": 363,
-      "directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2S-aaf4fa5-20261113/source",
-      "all_tracked_files_match_commit": true
-    },
-    "server_tests": {
-      "tests": 772,
-      "failures": 0,
-      "errors": 0,
-      "skipped": 0
-    },
-    "server_test_seconds": 60.27,
-    "server_checks": {
-      "gpu_devices_hidden": true,
-      "isolated_environment": true,
-      "python_version": true,
-      "pinned_versions": true,
-      "installed_vllm_source": true,
-      "installed-lazy-preparation": true,
-      "cuda_uninitialized_before": true,
-      "native_modules_installed": true,
-      "native_writer": true,
-      "existing_artifact_integrity": true,
-      "store-cli-help": true,
-      "store-cli-save-help": true,
-      "sllm-cli-help": true,
-      "server-cpu-tests": true,
-      "server_contracts_no_skips": true,
-      "cuda_uninitialized_after": true
-    },
-    "versions": {
-      "torch": "2.13.0",
-      "vllm": "0.31.0",
-      "transformers": "5.17.0",
-      "ray": "2.48.0",
-      "msgspec": "0.22.0"
-    },
-    "packages": {
-      "serverless_llm-0.8.0-py3-none-any.whl": {
-        "sha256": "81cd6c3a46bc0f15f3c346a1659ae4f1c8d45bc84a4656f59cb2a2c8a2ceea3a",
-        "native_sha256": {}
-      },
-      "serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl": {
-        "sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
-        "native_sha256": {
-          "sllm_store/_C.cpython-312-x86_64-linux-gnu.so": "4354f73638a2300e7f487dee9816a50efaa8c1d1e179ebaaa34044f121cd16a6",
-          "sllm_store/_checkpoint_store.cpython-312-x86_64-linux-gnu.so": "f93db0d14ca263ae49c74064685c877bdf0bf9ba860ee1f528f3316e78577ef1",
-          "sllm_store/libglog.so": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
-          "sllm_store/libglog.so.0.6.0": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
-          "sllm_store/libglog.so.1": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414"
-        }
-      }
-    },
-    "actual_qwen_tokenizer": {
-      "passed": true,
-      "prompt_token_counts": [
-        30,
-        29,
-        25
-      ],
-      "default_return_type": "BatchEncoding",
-      "explicit_return_type": "list",
-      "entry_prompt_ids_match": true,
-      "failure_evidence_saved": true,
-      "tokenizer_file_sha256": {
-        "tokenizer.json": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
-        "preparation.json": "3cb94a4c2ef5fbd1e225fb66008262066ce9d91deb6116e9c9a4a5d9c398b5b8",
-        "merges.txt": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
-        "vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
-        "tokenizer_config.json": "d5d09f07b48c3086c508b30d1c9114bd1189145b74e982a265350c923acd8101",
-        "generation_config.json": "2325da0f15bb848e018c5ae071b7943332e9f871d6b60e2ed22ca97d4cb993d2",
-        "source.json": "bf49eb1b00d7342f728b55b8d3068f42f6a1f338441828c70063fe6c70b078e3",
-        "config.json": "660db3b73d788119c04535e48cf9be5f55bc3100841a718637ae695b442f27dd"
-      },
-      "scope": "Actual model tokenizer and preparation only; no model weights, HTTP, Ray, vLLM engine or GPU generation"
-    },
-    "isolation": "Private offline network and device namespaces without NVIDIA nodes; CUDA_VISIBLE_DEVICES empty; CUDA uninitialized before and after checks",
-    "cleanup": {
-      "sllm-d2-cpu-repair-aaf4fa5.service": {
-        "MainPID": "0",
-        "ControlGroup": "",
-        "ActiveState": "inactive"
-      }
-    },
-    "remaining_owned_pids": [],
-    "gpu_used": false,
-    "gpu_resource_actions": "No GPU lock or unlock performed in this repair",
-    "recovered_failures": [
-      "Prior 415724f deployment had 771 passes and one Ray import-isolation failure caused by the new real tokenizer test importing Torch in the parent. aaf4fa5 isolates that test in a CPU child process; previous source and logs retained."
-    ],
-    "previous_cpu_cleanup": "415724f CPU unit inactive, MainPID=0 and no remaining owned PIDs; failure logs retained",
-    "compatibility": "Model prompts, template thinking option, request parameters, stop rules, strict comparisons and migration behavior unchanged. No sllm, sllm_store, dependency lock or ordinary service changes.",
     "evidence_location": "External engine-upgrade-20261113/stopping-tokenizer-cpu and stopping-tokenizer-deployment/repair-server-evidence",
-    "evidence_archive_sha256": "f8e3ba5c9126d89ceb7a2b99ed6e3e30c47df7a7f4199817f628b214c4e4e990",
-    "archive_hash_verified": true,
-    "acceptance_boundary": "Repairs CPU preparation and evidence persistence only. EOS and stop-string migration GPU qualification remains pending; no EOS sampling, GPU min-token masking, cross-freeze stopping or final stage-D acceptance claimed."
+    "record_sha256": "b7c1fdf4e73342a376f1ec4dbdb75b1c57a79a6ab2906286b2e10589891ac99a",
+    "artifact_sha256": {
+      "local_cpu.xml_sha256.light.xml": "54e53a9260bb715f3ef28c124a72cb224d66cebd47c692dc64c30aca13bb6986",
+      "local_cpu.xml_sha256.torch.xml": "6b00f5655777e5d5efedcd0eb4f98f2e86872b994f367666e8577a53209e8148",
+      "final_local_isolated_tokenizer.xml_sha256": "f8270e2203eb531b8ccccc48eb51670bbd03c45f33a675a471066ad4743235cb",
+      "deployment.archive_sha256": "96dd2d9a61e1c25ed6f8ef911ca459a55610750dc5dea89bac2d07f7373ce935",
+      "packages.serverless_llm-0.8.0-py3-none-any.whl.sha256": "81cd6c3a46bc0f15f3c346a1659ae4f1c8d45bc84a4656f59cb2a2c8a2ceea3a",
+      "packages.serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl.sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
+      "packages.serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl.native_sha256.sllm_store/_C.cpython-312-x86_64-linux-gnu.so": "4354f73638a2300e7f487dee9816a50efaa8c1d1e179ebaaa34044f121cd16a6",
+      "packages.serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl.native_sha256.sllm_store/_checkpoint_store.cpython-312-x86_64-linux-gnu.so": "f93db0d14ca263ae49c74064685c877bdf0bf9ba860ee1f528f3316e78577ef1",
+      "packages.serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl.native_sha256.sllm_store/libglog.so": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
+      "packages.serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl.native_sha256.sllm_store/libglog.so.0.6.0": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
+      "packages.serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl.native_sha256.sllm_store/libglog.so.1": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
+      "actual_qwen_tokenizer.tokenizer_file_sha256.tokenizer.json": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+      "actual_qwen_tokenizer.tokenizer_file_sha256.preparation.json": "3cb94a4c2ef5fbd1e225fb66008262066ce9d91deb6116e9c9a4a5d9c398b5b8",
+      "actual_qwen_tokenizer.tokenizer_file_sha256.merges.txt": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+      "actual_qwen_tokenizer.tokenizer_file_sha256.vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910",
+      "actual_qwen_tokenizer.tokenizer_file_sha256.tokenizer_config.json": "d5d09f07b48c3086c508b30d1c9114bd1189145b74e982a265350c923acd8101",
+      "actual_qwen_tokenizer.tokenizer_file_sha256.generation_config.json": "2325da0f15bb848e018c5ae071b7943332e9f871d6b60e2ed22ca97d4cb993d2",
+      "actual_qwen_tokenizer.tokenizer_file_sha256.source.json": "bf49eb1b00d7342f728b55b8d3068f42f6a1f338441828c70063fe6c70b078e3",
+      "actual_qwen_tokenizer.tokenizer_file_sha256.config.json": "660db3b73d788119c04535e48cf9be5f55bc3100841a718637ae695b442f27dd",
+      "evidence_archive_sha256": "f8e3ba5c9126d89ceb7a2b99ed6e3e30c47df7a7f4199817f628b214c4e4e990"
+    }
   },
   "stopping_gpu_20261112_133644": {
     "status": "Failed before EOS probe HTTP request; no stopping continuation qualification",
     "commit": "07f11352976f276b39d0b744f05c7751f6d12f0b",
-    "server": "inspur-gpu-12 (192.168.5.188)",
-    "resource_request": "soft lock GPU 1,2",
-    "resource_release": "soft unlock GPU 1,2",
     "scope": "stage-d2-stopping",
-    "elapsed_seconds_including_release": 131.49744749069214,
-    "failure": "Transformers 5.17 apply_chat_template defaults to BatchEncoding; prepare_reference stored that object before validating token shape, causing JSON serialization failure both during preparation and subsequent failure reporting.",
-    "coverage": "Source model initialization, private Store, worker mapping, HTTP baseline and source numerical runtime report passed; no EOS probe was sent, no stopping migration occurred and the two stop-string scenarios were not reached.",
-    "external_entry_correction": "Before launching, reproduced and corrected stale sd2 Ray-directory assertion to approved d2s namespace. Stored explicit two-hour user authorization with a 30-minute per-batch deadline; approval guards passed on CPU.",
-    "external_entry_checks": {
-      "ray_path_regression": "failed before fix; passed after fix",
-      "syntax": "passed",
-      "gpu_used": false,
-      "authorization_anchor_utc": "2026-11-12T13:35:34Z",
-      "authorization_hours": 2,
-      "per_batch_max_seconds": 1800,
-      "missing_approval": {
-        "returncode": 2,
-        "error": "launch-gpu-migration.py: error: the following arguments are required: --human-approved, --approval-anchor-utc, --physical-gpu-indices, --gpu-uuids"
-      },
-      "wrong_gpu": {
-        "returncode": 1,
-        "error": "AssertionError: This approval covers GPU 1,2 only"
-      },
-      "expired": {
-        "returncode": 1,
-        "error": "AssertionError: The two-hour D2 stopping approval has expired"
-      },
-      "entry_sha256": {
-        "launch-gpu-migration.py": "0850dc3d2bed1d7239f7cc47b1a669ab34cad7c0732698359b5cc080db7dd614",
-        "gpu-migration-batch.py": "9f34c64988db09bf067dc0b637a69f1d71687c4d97cc00067cb42bb2050a89ce",
-        "release-batch.py": "7c1f43dcbad9b26c3ba6e6cd1d207c2ba3a8b357c0c4dbc5f0f078ce3129f008"
-      }
-    },
-    "cleanup": "Owned unit stopped, no remaining owned PIDs or GPU compute processes; GPU 1 at 0 MiB, GPU 2 at 1 MiB. User platform reservation unchanged.",
-    "sampled_peak_gpu_mib": {
-      "1": 2377,
-      "2": 429
-    },
     "evidence_location": "External engine-upgrade-20261112/stopping-gpu-manual/evidence-20261112-133644",
-    "evidence_archive_sha256": "c67dc063473cf4ca97806316b58e28ab4a3f5e9aaf7eb541f8a85c4fce92d257",
-    "archive_hash_verified": true,
-    "archive_manifest_files_verified": 13,
-    "acceptance_boundary": "Failure and cleanup evidence only. CPU repair and fresh separately approved GPU qualification required."
+    "record_sha256": "5bcf9aa839cb37764cfe192eda6bb38d4ae6307bdf262da3065c35b4a2d8671e",
+    "artifact_sha256": {
+      "external_entry_checks.entry_sha256.launch-gpu-migration.py": "0850dc3d2bed1d7239f7cc47b1a669ab34cad7c0732698359b5cc080db7dd614",
+      "external_entry_checks.entry_sha256.gpu-migration-batch.py": "9f34c64988db09bf067dc0b637a69f1d71687c4d97cc00067cb42bb2050a89ce",
+      "external_entry_checks.entry_sha256.release-batch.py": "7c1f43dcbad9b26c3ba6e6cd1d207c2ba3a8b357c0c4dbc5f0f078ce3129f008",
+      "evidence_archive_sha256": "c67dc063473cf4ca97806316b58e28ab4a3f5e9aaf7eb541f8a85c4fce92d257"
+    }
   },
   "stopping_entry_cpu_20261112": {
     "status": "Approved stopping entry and first-match correction implemented; local and isolated server CPU checks passed; GPU qualification not run",
     "commit": "07f11352976f276b39d0b744f05c7751f6d12f0b",
-    "plan": "migration-stopping-qualification-plan.md",
     "scope": "stage-d2-stopping; EOS, stop-string-exclude and stop-string-include; explicit batch-invariant-v1 only",
-    "entry": "scripts/baseline/qualify_stopping.py",
-    "selection_correction": "Keep decoded token slice 32:320 as stop string, record actual first match and require stop_start < frozen raw text length < stop_end. Prior real output selected chars 238:2377 but first matched at chars 30:2169; user explicitly approved this correction and CPU checks.",
-    "local_cpu": {
-      "light_passed": 745,
-      "light_skipped": 21,
-      "complementary_passed": 77,
-      "all_skips_covered": true,
-      "new_tests": 28,
-      "gpu_used": false,
-      "source_files": 18,
-      "xml_sha256": {
-        "light.xml": "24f0aa38fcfd9f2295a16c1dcaf26c3e3a98520ce04134d07b8d7cd0e762f0d5",
-        "torch.xml": "3452760014ade0178840d77eccfc5a3616f9b2419c5e5eddc65c816a6dc52699"
-      }
-    },
-    "coverage": "28 new tests: pure stopping evidence, three HTTP/actor flow scenarios, strict result re-audit, bounded probe exhaustion, boundary failure, cancellation and cleanup, scope separation, EOS-source corruption rejection, repeated-output first-match regression and dependency-free imports",
-    "static_checks": "Ruff 0.6.9 lint/format and git diff --check passed",
-    "server": "inspur-gpu-12 (192.168.5.188)",
-    "deployment": {
-      "commit": "07f11352976f276b39d0b744f05c7751f6d12f0b",
-      "archive_sha256": "4bfbbfc41a49399aac50e259bb77a702d236e2e2c94e84e2fd0b28785fe2fd58",
-      "tracked_file_count": 362,
-      "directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2S-07f1135-20261112/source",
-      "all_tracked_files_match_commit": true
-    },
-    "server_tests": {
-      "tests": 766,
-      "failures": 0,
-      "errors": 0,
-      "skipped": 0
-    },
-    "server_test_seconds": 54.691,
-    "server_checks": {
-      "gpu_devices_hidden": true,
-      "isolated_environment": true,
-      "python_version": true,
-      "pinned_versions": true,
-      "installed_vllm_source": true,
-      "installed-lazy-preparation": true,
-      "cuda_uninitialized_before": true,
-      "native_modules_installed": true,
-      "native_writer": true,
-      "existing_artifact_integrity": true,
-      "store-cli-help": true,
-      "store-cli-save-help": true,
-      "sllm-cli-help": true,
-      "server-cpu-tests": true,
-      "server_contracts_no_skips": true,
-      "cuda_uninitialized_after": true
-    },
-    "versions": {
-      "torch": "2.13.0",
-      "vllm": "0.31.0",
-      "transformers": "5.17.0",
-      "ray": "2.48.0",
-      "msgspec": "0.22.0"
-    },
-    "packages": {
-      "serverless_llm-0.8.0-py3-none-any.whl": {
-        "sha256": "5d7f7e9ec63aa3ed4359fd438f9211f580e1d0e34a33870bd31e5ddafc5be0a4",
-        "native_sha256": {}
-      },
-      "serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl": {
-        "sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
-        "native_sha256": {
-          "sllm_store/_C.cpython-312-x86_64-linux-gnu.so": "4354f73638a2300e7f487dee9816a50efaa8c1d1e179ebaaa34044f121cd16a6",
-          "sllm_store/_checkpoint_store.cpython-312-x86_64-linux-gnu.so": "f93db0d14ca263ae49c74064685c877bdf0bf9ba860ee1f528f3316e78577ef1",
-          "sllm_store/libglog.so": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
-          "sllm_store/libglog.so.0.6.0": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
-          "sllm_store/libglog.so.1": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414"
-        }
-      }
-    },
-    "store_reuse": "Reused verified native Store wheel after confirming Store source and uv.lock unchanged; no fresh GPU qualification inferred",
-    "runtime_probe": {
-      "passed": true,
-      "gpu_used": false,
-      "cuda_initialized": false,
-      "private_grpc_protobuf_roundtrip": true,
-      "native_writer_module": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2S-07f1135-20261112/source/.venv/lib/python3.12/site-packages/sllm_store/_C.cpython-312-x86_64-linux-gnu.so",
-      "native_reader_module": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2S-07f1135-20261112/source/.venv/lib/python3.12/site-packages/sllm_store/_checkpoint_store.cpython-312-x86_64-linux-gnu.so",
-      "installed_plugin_entry_point": true,
-      "torch_runtime_version": "2.13.0+cu130"
-    },
-    "isolation": "Private offline network and device namespaces without NVIDIA nodes; CUDA_VISIBLE_DEVICES empty; CUDA uninitialized before and after CPU checks",
-    "cleanup": {
-      "sllm-d2-cpu-repair-07f1135.service": {
-        "MainPID": "0",
-        "ControlGroup": "",
-        "ActiveState": "inactive"
-      }
-    },
-    "remaining_owned_pids": [],
-    "gpu_used": false,
-    "gpu_resource_actions": "No GPU lock or unlock performed",
-    "manual_entry_cpu_checks": {
-      "missing_approval": {
-        "returncode": 2,
-        "error": "launch-gpu-migration.py: error: the following arguments are required: --human-approved, --approval-anchor-utc, --physical-gpu-indices, --gpu-uuids"
-      },
-      "wrong_gpu": {
-        "returncode": 1,
-        "error": "AssertionError: This approval covers GPU 1,2 only"
-      },
-      "expired": {
-        "returncode": 1,
-        "error": "AssertionError: The 30-minute D2 approval has expired"
-      },
-      "commit": "07f11352976f276b39d0b744f05c7751f6d12f0b",
-      "gpu_used": false,
-      "scope": "stage-d2-stopping",
-      "valid_launch_executed": false,
-      "entry_sha256": {
-        "gpu-migration-batch.py": "f0f5fc14fa217b3469e0a2a1ad57565c2bd031ab476d615c682908ba19e5bbc0",
-        "launch-gpu-migration.py": "990ee244ac67ee7f11fce11165dfd87d3c0b75aae92c1042e8baa3faafa49613",
-        "release-batch.py": "7c1f43dcbad9b26c3ba6e6cd1d207c2ba3a8b357c0c4dbc5f0f078ce3129f008"
-      },
-      "large_json_archive_check": {
-        "passed": true,
-        "bytes": 22020112,
-        "archive_sha256": "7bff4fba7d223e12ab1e0688c68b530e81c3becf50ef52e3f3915441228fdd21"
-      }
-    },
-    "compatibility": "No changes to sllm, sllm_store, uv.lock or pyproject.toml since qualified executable 6938fe1. Existing continuation CLI, scenarios, parameters and strict checks retain defaults; optional suite injection shares lifecycle. Ordinary service behavior unchanged.",
     "evidence_location": "External engine-upgrade-20261112/stopping-entry-cpu, stopping-deployment/repair-server-evidence and stopping-gpu-manual",
-    "evidence_archive_sha256": "6c97a69ac3322e723e25923976055268c52f383aa49901fb529f03ce673cdfcd",
-    "archive_hash_verified": true,
-    "acceptance_boundary": "CPU readiness only. Actual tokenizer/model EOS sampling, min-token masking, cross-freeze stop execution and full HTTP GPU continuation in these three scenarios remain unqualified. Existing greedy/seeded-multi GPU evidence does not qualify this suite. No TP2, fault-continuation, model matrix, performance or final-image acceptance."
+    "record_sha256": "41fe0b84dd27748f0578c505bd1285e4c356fb02e98a3daf802670df0a9c2ebc",
+    "artifact_sha256": {
+      "local_cpu.xml_sha256.light.xml": "24f0aa38fcfd9f2295a16c1dcaf26c3e3a98520ce04134d07b8d7cd0e762f0d5",
+      "local_cpu.xml_sha256.torch.xml": "3452760014ade0178840d77eccfc5a3616f9b2419c5e5eddc65c816a6dc52699",
+      "deployment.archive_sha256": "4bfbbfc41a49399aac50e259bb77a702d236e2e2c94e84e2fd0b28785fe2fd58",
+      "packages.serverless_llm-0.8.0-py3-none-any.whl.sha256": "5d7f7e9ec63aa3ed4359fd438f9211f580e1d0e34a33870bd31e5ddafc5be0a4",
+      "packages.serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl.sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
+      "packages.serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl.native_sha256.sllm_store/_C.cpython-312-x86_64-linux-gnu.so": "4354f73638a2300e7f487dee9816a50efaa8c1d1e179ebaaa34044f121cd16a6",
+      "packages.serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl.native_sha256.sllm_store/_checkpoint_store.cpython-312-x86_64-linux-gnu.so": "f93db0d14ca263ae49c74064685c877bdf0bf9ba860ee1f528f3316e78577ef1",
+      "packages.serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl.native_sha256.sllm_store/libglog.so": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
+      "packages.serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl.native_sha256.sllm_store/libglog.so.0.6.0": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
+      "packages.serverless_llm_store-0.8.0-cp312-cp312-linux_x86_64.whl.native_sha256.sllm_store/libglog.so.1": "c66808501ba37b02dc36b9f14de39a8fe1b027da153fdb8d2137c39a1e52c414",
+      "manual_entry_cpu_checks.entry_sha256.gpu-migration-batch.py": "f0f5fc14fa217b3469e0a2a1ad57565c2bd031ab476d615c682908ba19e5bbc0",
+      "manual_entry_cpu_checks.entry_sha256.launch-gpu-migration.py": "990ee244ac67ee7f11fce11165dfd87d3c0b75aae92c1042e8baa3faafa49613",
+      "manual_entry_cpu_checks.entry_sha256.release-batch.py": "7c1f43dcbad9b26c3ba6e6cd1d207c2ba3a8b357c0c4dbc5f0f078ce3129f008",
+      "manual_entry_cpu_checks.large_json_archive_check.archive_sha256": "7bff4fba7d223e12ab1e0688c68b530e81c3becf50ef52e3f3915441228fdd21",
+      "evidence_archive_sha256": "6c97a69ac3322e723e25923976055268c52f383aa49901fb529f03ce673cdfcd"
+    }
   },
   "schema_version": 1,
   "continuation_stopping_cpu_20261112": {
     "status": "CPU stopping boundary matrix passed; no new GPU qualification",
-    "source_base_commit": "2085298",
     "scope": "Fixed vLLM 0.31.0 frontend stop-buffer replay and Core check_stop after resume admission; no serving behavior change",
-    "focused_passed": 32,
-    "light": {
-      "passed": 717,
-      "skipped": 21,
-      "failed": 0,
-      "elapsed_seconds": 134.97
-    },
-    "complementary": {
-      "passed": 77,
-      "skipped": 0,
-      "failed": 0,
-      "elapsed_seconds": 19.49,
-      "all_21_light_skips_covered": true
-    },
-    "source_files": 18,
-    "new_source": "vllm/v1/core/sched/utils.py",
-    "source_identity": "SHA256 pinned after matching the installed vLLM 0.31.0 distribution RECORD from the verified server deployment; no engine import",
-    "coverage": [
-      "Every unfinished split and repeated frontend restores for stop strings",
-      "ASCII, Unicode and overlapping stop strings",
-      "min_tokens, include_stop_str_in_output, both logprob layouts",
-      "Length termination flushes buffered text",
-      "Natural completion is not resubmitted",
-      "Real Request/check_stop for EOS, explicit stop IDs, ignore_eos and original output/context limits under sync/async resume admission"
-    ],
-    "gpu_used": false,
     "limitations": "Tokens and character decoding are test inputs. No model tokenizer, GPU sampler EOS/min-token masking, full scheduler or HTTP stopping qualification. Existing GPU runtime remains 6938fe1.",
     "evidence_location": "External engine-upgrade-20261112/continuation-stop-cpu",
-    "xml_sha256": {
-      "focused.xml": "b88a54c508df883446d90f651b9fe2e82d938a072faf887d8a2c4a0c732242e4",
-      "light.xml": "a1f23d4cdff2429272693a295c959f6495c8d0c7560042f1072ba54b675f3a63",
-      "torch.xml": "446ef17e798e81c7939f5bd63aebb52efebbccde353b281eb3b4943634f9a375"
-    },
-    "test_sha256": "d4a630be6b26c99e4f038aac7440d1512074e6dcab35d28fb111ad01cc175b19"
+    "record_sha256": "3a8ea60d443bb4e1f82644149240263994c0d88cb2305b08383ad4e23e57b72e",
+    "artifact_sha256": {
+      "xml_sha256.focused.xml": "b88a54c508df883446d90f651b9fe2e82d938a072faf887d8a2c4a0c732242e4",
+      "xml_sha256.light.xml": "a1f23d4cdff2429272693a295c959f6495c8d0c7560042f1072ba54b675f3a63",
+      "xml_sha256.torch.xml": "446ef17e798e81c7939f5bd63aebb52efebbccde353b281eb3b4943634f9a375",
+      "test_sha256": "d4a630be6b26c99e4f038aac7440d1512074e6dcab35d28fb111ad01cc175b19"
+    }
   },
   "continuation_ray_rpc_repair_20261112": {
     "commit": "6938fe106868ca9ef4619a3ffb83473babff39bd",
     "status": "CPU repair and real GPU bounded continuation passed; stage review pending",
-    "root_cause": "Ray 2.48.0 __ray_call__ returns async callback coroutine without awaiting; serialization failed before control requests. CPU flow double had bypassed this boundary.",
-    "fix": "Explicit async backend get_numerical_runtime RPC awaits the named Worker RPC. Real zero-GPU Ray regression reproduces the old failure and validates success plus persisted Worker errors.",
-    "local_cpu": {
-      "passed": 685,
-      "skipped": 21,
-      "complementary_passed": 77,
-      "all_21_skips_covered": true
-    },
-    "server_cpu": {
-      "tests": 706,
-      "failures": 0,
-      "errors": 0,
-      "skipped": 0
-    },
-    "server_cpu_seconds": 47.844,
-    "deployment": {
-      "commit": "6938fe106868ca9ef4619a3ffb83473babff39bd",
-      "archive_sha256": "053cc330ee66a1d07abca75d224461d469a326a73f8a0a945571a2f9acfcecd4",
-      "tracked_file_count": 356,
-      "directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2-6938fe1-20261112/source",
-      "all_tracked_files_match_commit": true
-    },
-    "main_wheel_sha256": "750580bb8ce201823599b736bd806fad4993e3b2edddeb994c200fc11767e741",
-    "cpu_evidence": "External engine-upgrade-20261112/continuation-ray-repair and continuation-ray-deployment/repair-server-evidence",
-    "cpu_archive_sha256": "9909d5bf748447fbf038ece45e970fedb199bb7c285e5ab6e8540f99e2283dd3",
-    "compatibility": "Ordinary serving defaults, Store, HTTP parameters and strict output comparison unchanged"
+    "record_sha256": "16d76e24e79fcc2657704c980d54f142c83960169378faa52fcdf7eebd1215d5",
+    "artifact_sha256": {
+      "deployment.archive_sha256": "053cc330ee66a1d07abca75d224461d469a326a73f8a0a945571a2f9acfcecd4",
+      "main_wheel_sha256": "750580bb8ce201823599b736bd806fad4993e3b2edddeb994c200fc11767e741",
+      "cpu_archive_sha256": "9909d5bf748447fbf038ece45e970fedb199bb7c285e5ab6e8540f99e2283dd3"
+    }
   },
   "continuation_gpu_20261112_113642": {
     "status": "Bounded same-request continuation passed; user stage review pending",
     "commit": "6938fe106868ca9ef4619a3ffb83473babff39bd",
-    "server": "inspur-gpu-12 (192.168.5.188)",
-    "resource_request": "soft lock GPU 1,2",
-    "resource_release": "soft unlock GPU 1,2",
-    "authorization": "User authorized diagnosis, repair and bounded retries for one hour, 2026-11-12 11:21:54 to 12:21:54 UTC; this single successful batch ended early",
     "configuration": "Qwen3-0.6B, BF16/TP1/eager, vLLM 0.31.0 V2, FLASH_ATTN, explicitly selected batch-invariant-v1; one host with two private Ray worker nodes",
-    "elapsed_seconds": 304.7046551704407,
-    "checks": {
-      "private_store": true,
-      "worker_mapping": true,
-      "http_baseline": true,
-      "scheduler_trigger": true,
-      "same_http_continuation": true,
-      "final_snapshot_restored": true,
-      "full_tokens_equal": true,
-      "request_ledger_settled": true,
-      "atomic_publication": true,
-      "source_cleanup": true,
-      "target_prefix_cache_hit": true,
-      "controller_shutdown": true
-    },
-    "numerical_worker_reports": 4,
-    "resumed_http_requests": 5,
-    "resumed_choices": 7,
-    "cases": [
-      {
-        "scenario": "greedy",
-        "request_id": "d2-greedy-1-4",
-        "choice_count": 1,
-        "prompt_tokens": 96,
-        "completion_tokens": 384,
-        "frozen_output_tokens": [
-          331
-        ],
-        "resumed_choice_indices": [
-          0
-        ],
-        "source_had_output": true,
-        "full_tokens_equal": true
-      },
-      {
-        "scenario": "greedy",
-        "request_id": "d2-greedy-2-4",
-        "choice_count": 1,
-        "prompt_tokens": 96,
-        "completion_tokens": 384,
-        "frozen_output_tokens": [
-          286
-        ],
-        "resumed_choice_indices": [
-          0
-        ],
-        "source_had_output": true,
-        "full_tokens_equal": true
-      },
-      {
-        "scenario": "greedy",
-        "request_id": "d2-greedy-0-4",
-        "choice_count": 1,
-        "prompt_tokens": 96,
-        "completion_tokens": 384,
-        "frozen_output_tokens": [
-          379
-        ],
-        "resumed_choice_indices": [
-          0
-        ],
-        "source_had_output": true,
-        "full_tokens_equal": true
-      },
-      {
-        "scenario": "seeded-multi",
-        "request_id": "d2-seeded-multi-0-3",
-        "choice_count": 2,
-        "prompt_tokens": 96,
-        "completion_tokens": 768,
-        "frozen_output_tokens": [
-          336,
-          336
-        ],
-        "resumed_choice_indices": [
-          0,
-          1
-        ],
-        "source_had_output": true,
-        "full_tokens_equal": true
-      },
-      {
-        "scenario": "seeded-multi",
-        "request_id": "d2-seeded-multi-1-3",
-        "choice_count": 2,
-        "prompt_tokens": 96,
-        "completion_tokens": 768,
-        "frozen_output_tokens": [
-          26,
-          24
-        ],
-        "resumed_choice_indices": [
-          0,
-          1
-        ],
-        "source_had_output": true,
-        "full_tokens_equal": true
-      }
-    ],
-    "comparison": "Original HTTP caller completed once; frozen state preserved; complete tokens/text/top-5 logprobs/cumulative_logprob and terminal state strictly equal to independent controls; no tolerance",
-    "offline_audit": "Downloaded full results revalidated for all 5 requests with generated-prefix required; source prefixes and settled ledger rechecked",
-    "cleanup": {
-      "task_workloads_released": true,
-      "remaining_owned_pids": [],
-      "all_devices_idle": true,
-      "final_gpu_mib": {
-        "1": 0,
-        "2": 1
-      },
-      "platform_reservation": "Unchanged"
-    },
-    "sampled_peak_gpu_mib": {
-      "1": 2377,
-      "2": 2377
-    },
-    "sampled_peak_cgroup_bytes": 14512984064,
     "evidence_location": "External engine-upgrade-20261112/continuation-gpu-ray/evidence-20261112-113642",
-    "archive_sha256": "4826e3ca4cde37a2666f2cd64ff75cfa2c85de6330bfc515c490c8fadd472e97",
-    "full_records_archive_sha256": "56bc85babdc4b6e604f2e6af13f095eba3294112efcd380462bfa100eca61850",
-    "archive_note": "Initial archive excludes files >=20 MiB. Supplementary full-records archive includes complete continuation, batch and release JSON; archive and all seven file hashes verified.",
-    "acceptance_boundary": "Two bounded scenarios only; default numerical profile, EOS/stop, post-freeze rollback/cancellation, repeated migration of the same request, Transformers GPU regression, TP2, other models, performance and final image remain unqualified"
+    "record_sha256": "15d3e3e65e3f12dec0ff6457eb6b69351a10d0ab8222b61feef997b08aff9d35",
+    "artifact_sha256": {
+      "archive_sha256": "4826e3ca4cde37a2666f2cd64ff75cfa2c85de6330bfc515c490c8fadd472e97",
+      "full_records_archive_sha256": "56bc85babdc4b6e604f2e6af13f095eba3294112efcd380462bfa100eca61850"
+    }
   },
   "continuation_gpu_20261112_111615": {
     "status": "Failed before migration; no continuation qualification",
     "commit": "450fd9d81f132feabe77d1046480d6e7eb1aa0c5",
-    "server": "inspur-gpu-12 (192.168.5.188)",
-    "resource_request": "soft lock GPU 1,2",
-    "resource_release": "soft unlock GPU 1,2",
-    "failure": "RayTaskError(TypeError): cannot pickle coroutine object at source numerical diagnostic",
-    "cleanup": "No task-owned PIDs or compute processes; GPU 1,2 returned to 0/1 MiB",
     "evidence_location": "External engine-upgrade-20261112/continuation-gpu-numerical/evidence-20261112-111615",
-    "archive_sha256": "10ab4517c2441e5bda120691be973491249380729f6a86a0eaeddd3ce7c3f7ac"
+    "record_sha256": "f84a3b85819ae1ca3786203c7d9dcda1b6a4d0860f0b445fbc833a99294d957d",
+    "artifact_sha256": {
+      "archive_sha256": "10ab4517c2441e5bda120691be973491249380729f6a86a0eaeddd3ce7c3f7ac"
+    }
   },
   "continuation_numerical_profile_server_cpu_20261112": {
     "status": "Reviewed numerical-profile candidate deployed; CPU qualification passed; GPU qualification pending",
     "commit": "450fd9d81f132feabe77d1046480d6e7eb1aa0c5",
-    "server": "inspur-gpu-12 (192.168.5.188)",
-    "deployment_directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2-450fd9d-20261112/source",
-    "source_identity": "All 355 tracked files match the Git archive before and after checks; clean checkout committed and pushed to origin/vllm-upgrade",
-    "source_archive_sha256": "c8a881f54d44417cf5e8d8c40d4201871041e92cd57f8074d4499f838e9d76a6",
-    "main_wheel_sha256": "1b2b92783e93218997774f1b153bb8234afa1024bca226b92d88986a3f910b0c",
-    "store_wheel_sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
-    "store_reuse": "Existing native wheel reused only after checking Store source and uv.lock unchanged from c3af908; every installed wheel member verified",
-    "server_tests": {"passed": 705, "failed": 0, "skipped": 0, "elapsed_seconds": 45.567},
-    "environment": "Independent Python 3.12.13 environment, Torch 2.13.0+cu130, vLLM 0.31.0, Transformers 5.17.0, Ray 2.48.0; offline sync and installed dependency checks passed",
-    "additional_checks": "Seventeen installed vLLM source hashes; installed lazy preparation and numerical Worker module with heavy imports blocked; native reader/writer imports; seven native CPU writer sizes; existing artifact integrity; CLI help; private gRPC/protobuf roundtrip",
-    "isolation": "No NVIDIA device nodes, empty CUDA_VISIBLE_DEVICES, private network/PID namespace; CUDA uninitialized before and after checks",
-    "cleanup": "CPU unit inactive with MainPID=0; no remaining task-owned processes; no GPU lock or unlock performed",
-    "manual_entry": "Bound to this exact deployment and batch-invariant-v1; VLLM_BATCH_INVARIANT=1 supplied before Python startup and checked by the batch wrapper. Syntax and three pre-SSH rejection paths passed; no valid approval generated or launch executed.",
-    "manual_entry_evidence": "External engine-upgrade-20261112/continuation-gpu-numerical/entry-cpu-checks.json",
     "evidence_location": "External engine-upgrade-20261112/continuation-numerical-deployment/repair-server-evidence",
-    "evidence_archive_sha256": "239dac585965bb6e829f8e07168df800fc8d8e7af22cc16a0cb2a6d8c07857ec",
-    "gpu_used": false,
-    "acceptance_boundary": "CPU deployment readiness only. No real batch-invariant kernel, source/target runtime report, greedy/seeded-multi numerical continuation or GPU release qualified for this candidate."
+    "record_sha256": "0f425cffb37966225347eeebb80cb93b11dc1b3d6729a44adc017444950d3b20",
+    "artifact_sha256": {
+      "source_archive_sha256": "c8a881f54d44417cf5e8d8c40d4201871041e92cd57f8074d4499f838e9d76a6",
+      "main_wheel_sha256": "1b2b92783e93218997774f1b153bb8234afa1024bca226b92d88986a3f910b0c",
+      "store_wheel_sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
+      "evidence_archive_sha256": "239dac585965bb6e829f8e07168df800fc8d8e7af22cc16a0cb2a6d8c07857ec"
+    }
   },
   "continuation_numerical_profile_cpu_20261112": {
     "status": "Explicitly approved implementation and CPU checks passed; subsequently committed and deployed as 450fd9d, see server CPU qualification",
-    "source_base_commit": "e115946adef6017aef3e5148db4eae636458ec18",
     "scope": "Opt-in D2 batch-invariant-v1 configuration; pre-import environment agreement, explicit propagation to both private workers, FLASH_ATTN selection and read-only actual Worker diagnostics",
-    "focused": {"passed": 126, "failed": 0, "elapsed_seconds": 11.75},
-    "baseline_and_legacy_backend": {"passed": 684, "failed": 0, "skipped": 21, "elapsed_seconds": 115.58},
-    "fresh_tensor_and_transformers_cpu": {"passed": 77, "failed": 0, "skipped": 0, "elapsed_seconds": 25.01},
-    "skip_reconciliation": "All 21 light-profile skips matched by classname and test name to fresh Torch CPU passes; zero unresolved skips",
-    "pinned_source": "17 source files verified against the locked vLLM 0.31.0 wheel; real SM80 initialization functions execute with CPU substitutes to check operation registration, not kernel numerics",
-    "static_checks": "Ruff format/check, JSON parsing and git diff --check passed",
-    "compatibility": "Ordinary serving, Store, D1 defaults and strict output comparisons unchanged; D2 rejects an ambient batch-invariant setting unless explicitly selected in its approval",
     "evidence_location": "External engine-upgrade-20261112/continuation-numerical-profile; summary.json binds source and raw test hashes and records corrected test-double failures",
-    "gpu_used": false,
-    "acceptance_boundary": "No real model, GPU kernel or migrated numerical result qualified. This is preparation for a separately approved, newly deployed GPU batch."
+    "record_sha256": "d7713cd0d68a299030c779424adec9627e0829fe17a1e2fabb08eea4180d6dae"
   },
   "continuation_prefix_audit_cpu_20261112": {
     "status": "CPU checks passed; subsequently included in commit 450fd9d and its server CPU qualification",
-    "source_base_commit": "e115946adef6017aef3e5148db4eae636458ec18",
     "scope": "Reject already divergent source token/logprob prefixes before migration allocation; preserve strict final checks and failure cleanup",
-    "baseline_and_legacy_backend": {"passed": 639, "failed": 0, "skipped": 21, "elapsed_seconds": 115.32},
-    "fresh_tensor_and_transformers_cpu": {"passed": 77, "failed": 0, "skipped": 0, "elapsed_seconds": 23.83},
-    "skip_reconciliation": "All 21 light-profile skips matched by classname and test name to fresh Torch CPU passes; zero unresolved skips",
-    "regression": "Four new comparator tests first failed due to the missing implementation. Final focused checks passed 98 cases; final full suite includes these plus early-failure cleanup, completed-request read races and later divergence rejection.",
-    "saved_evidence_replay": "New comparator rejects both saved frozen histories at logprobs position zero; this is CPU replay, not a new GPU run",
-    "static_checks": "Ruff format/check and git diff --check passed",
-    "gpu_used": false,
     "evidence_location": "External engine-upgrade-20261112/continuation-prefix-audit; summary.json binds changed Python source hashes and raw XML/audit hashes",
-    "acceptance_boundary": "Fixes qualification ordering and attribution; does not resolve cross-request numerical variation or qualify GPU continuation. No runtime parameter, engine, runner, Store, CLI or scheduling policy changed."
+    "record_sha256": "15dc96b045aec3173b7ca603a2434192db9a76db8577f9194201d42ae4ad574e"
   },
   "continuation_gpu_20261112_091705": {
     "status": "Strict comparison failed; no continuation qualification",
     "commit": "3b8b8b89ab98206e6c84d606e781b1b504cd8267",
-    "server": "inspur-gpu-12 (192.168.5.188)",
-    "resource_request": "soft lock GPU 1,2",
-    "resource_release": "soft unlock GPU 1,2",
-    "runtime_seconds": 213.885,
-    "coverage": "Greedy: 22 HTTP 200 responses, two frozen requests resumed; seeded-multi not reached",
-    "audit": "Both migrated requests preserve frozen tokens/text/logprobs and match control final tokens/text/usage/finish. Both already differ from the independent control in logprobs at output position zero; all 20 nonmigrated responses also differ in logprobs while matching text. Cumulative logprob equals the sum of sampled-token logprobs in both final histories.",
-    "failure": "Strict cumulative_logprob comparison failed. These observations do not isolate the numerical cause or exclude an additional migration effect.",
-    "cleanup": "No task-owned PIDs or GPU compute processes remain; GPU 1 at 0 MiB, GPU 2 at 1 MiB; platform reservation unchanged",
     "evidence_location": "External engine-upgrade-20261112/continuation-gpu-evidence/evidence-20261112-091705",
-    "evidence_archive_sha256": "64404069311dfc7a21877143141562ecfda9b86ae08d003c9d18d2eef09289bc",
-    "acceptance_boundary": "Failed GPU qualification and subsequent read-only audit; not evidence of deterministic numerical continuation. No GPU use in the audit."
+    "record_sha256": "e1396ab1847a56d73eb71e2e511e5bac7675a85432e4a3254ae1a2fc0f092882",
+    "artifact_sha256": {
+      "evidence_archive_sha256": "64404069311dfc7a21877143141562ecfda9b86ae08d003c9d18d2eef09289bc"
+    }
   },
   "collection": "engine-route-evaluation-20261016",
   "storage": "External historical archives, not committed to this fork",
@@ -837,616 +401,154 @@
   "stage_a_acceptance_boundary": "CPU contracts and dependency lock only. No new GPU results, native Store acceptance or final image build.",
   "stage_b_cpu_candidate": {
     "collection": "engine-upgrade-20261022/stageB",
-    "storage": "External local CPU logs and source/evidence manifest, not model artifacts or Git payload",
-    "light_profile": {
-      "environment": "Local WSL Ubuntu-22.04, uv-managed CPython 3.12.13, fresh hash-installed cpu dependency group; no Torch or vLLM installed",
-      "command": "python -m pytest tests/baseline -q",
-      "result": "201 passed, 17 skipped; skipped Torch cases run in tensor profile",
-      "log": "light-full-final.txt"
-    },
-    "tensor_profile": {
-      "lock": "tests/baseline/requirements-tensor-cpu.txt",
-      "environment": "Separate CPython 3.12.13 environment with hash-installed Torch 2.13.0+cpu; CUDA build and initialization absent",
-      "command": "python -m pytest sllm_store/tests/python/test_tensor_layout.py tests/baseline/test_vllm_store_plugin.py tests/baseline/test_artifact.py -q",
-      "result": "55 passed",
-      "log": "tensor-profile-final.txt"
-    },
-    "native_writer_scope": "57 real standalone production C++ disk-writer tests in light suite, Linux g++ and O_DIRECT, injected I/O failures; no full Torch/CUDA extension build",
-    "review_scope": "Separate bounded specification and quality reviews for writer, plugin, child runtime, parent/artifact/tensor helpers and downloader/StoreManager integration",
-    "unverified": [
-      "Real server user/network namespace availability",
-      "Final serving image and native Store extension ABI",
-      "Real vLLM native export and independent Store restore",
-      "Model parameters, persistent buffers and aliases on actual CUDA allocations",
-      "Exact tokens/top-5 logprobs, CPU/GPU memory peaks and physical CUDA/Ray cleanup"
-    ],
-    "gpu_usage": "None; no lock, allocation or engine startup",
-    "acceptance_boundary": "CPU implementation candidate only. No Stage B completion, model or GPU qualification.",
-    "record_scope": "Historical initial CPU-only snapshot before the later native builds and approved GPU batches; see stage_b_runtime_qualification for the tested executable identity."
+    "record_sha256": "cfea2e20aaf749d1af0932e1324de834c58489df3841be4eea4012d552344d7e"
   },
   "stage_b_reader_followup": {
     "status": "CPU-verified fix; model restore qualification pending",
-    "source_parent": "bb64315ea0cc519a56f461f78f6971e55298f11e",
-    "root_cause": "O_DIRECT pread length for the logical final chunk was not disk aligned",
-    "original_file_sha256": "c493a87d3ec51a1ce1ed141c7cc47968f1f0c8cdb68a728466bd05c1e338600a",
-    "failed_offset": 1140850688,
-    "failed_count": 51250048,
-    "original_errno": 22,
-    "aligned_cpu_read_matches_buffered": true,
-    "regression": "25 real production reader tests passed; 243 total local WSL CPU contract tests passed",
-    "server_original_file": "Production reader harness passed at the failed offset with aligned and shifted destination buffers; real ext4, no GPU",
-    "native_build": "Rebuilt both native extensions and imported with all GPUs hidden; CUDA not initialized; 7 native writer cases passed",
-    "wheel_sha256": "e73d1d16dc12698584a6a57bcf1800feaddc136bf72d12cdadd1d67cc78991e5",
-    "evidence_archive": "reader-fix-cpu-evidence.tgz",
-    "evidence_archive_sha256": "b3fb8973c9e8ecfda9b5cbe85ad3a7754f1d06f00313a9545ce58bc8b9f30daf",
-    "gpu_used_for_followup": false,
-    "scope": "No new GPU batch or Stage C work; source changes require a new qualified artifact"
+    "scope": "No new GPU batch or Stage C work; source changes require a new qualified artifact",
+    "record_sha256": "0d4d55de6bdfb977cbd09b385dbbacd7fe495805bc3186416accc1943420a47d",
+    "artifact_sha256": {
+      "original_file_sha256": "c493a87d3ec51a1ce1ed141c7cc47968f1f0c8cdb68a728466bd05c1e338600a",
+      "wheel_sha256": "e73d1d16dc12698584a6a57bcf1800feaddc136bf72d12cdadd1d67cc78991e5",
+      "evidence_archive_sha256": "b3fb8973c9e8ecfda9b5cbe85ad3a7754f1d06f00313a9545ce58bc8b9f30daf"
+    }
   },
   "stage_b_runtime_qualification": {
     "executable_commit": "fef30ee9bab49fa7bf8b8b9ff53e60b9157ef4b3",
     "status": "Stage B bounded checks passed and user stage review approved",
-    "server": "inspur-gpu-12",
-    "physical_gpu_indices": [
-      1
-    ],
-    "lock_mode": "soft",
-    "batch": "20261022-082738",
-    "model": "Qwen/Qwen3-0.6B",
-    "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
-    "dtype": "bfloat16",
-    "tensor_parallel_size": 1,
-    "enforce_eager": true,
-    "max_model_len": 512,
-    "raw_prompt_count": 2,
-    "generated_tokens_per_prompt": 8,
-    "logprob_atol": 0,
-    "wheel_sha256": "e73d1d16dc12698584a6a57bcf1800feaddc136bf72d12cdadd1d67cc78991e5",
-    "artifact_manifest_sha256": "c6219429ad0a3912a178708a55ed1ea5789eba5b246d2f1db0f5e1a8a259dee1",
-    "logical_tensor_count": 339,
-    "parameters": 227,
-    "persistent_buffers": 112,
-    "unique_storages": 338,
-    "shared_storage_groups": [
-      [
-        "lm_head.weight",
-        "model.embed_tokens.weight"
-      ]
-    ],
-    "verification": {
-      "isolation": {
-        "interfaces": [
-          "lo"
-        ],
-        "network_namespace": 4026534180,
-        "parent_network_namespace": 4026531840
-      },
-      "logprobs_verified": true,
-      "method": "independent-offline-native-store-token-logprob-v1",
-      "passed": true,
-      "reference_sha256": "a1bff226210741f1883cabf058975ca8a885c23195785cc6c0f9bff95b3c8ad2",
-      "request_count": 2,
-      "schema_version": 1,
-      "tokens_verified": true
-    },
-    "sampled_gpu_peak_mib": 2367,
-    "sampled_cgroup_memory_peak_bytes": 6430957568,
-    "release": "soft unlock GPU 1; inactive unit, no compute applications, 0 MiB",
-    "evidence_archive": "gpu-evidence-20261022-082738.tgz",
-    "evidence_archive_sha256": "47c7217f4786d1ede2d8fe0c16b7b1e78e39b159d749874ce6bc6cc36a45dce7",
     "evidence_location": "External engine-upgrade-20261022/stageB collection; local and server copies verified",
-    "payload_evidence": "All 11 payload hashes rechecked remotely; large tensor payload retained on server; small archive includes metadata, references, logs and receipts",
-    "acceptance_boundary": "Native Qwen3-0.6B preparation and independent offline Store restore only; not Controller/Ray/HTTP, lifecycle, migration, TP2, graph mode, model matrix or performance acceptance"
+    "record_sha256": "a62843c58eca59adbb86d85b809eb142935c3c1c708c15ef1058e40cd67d0557",
+    "artifact_sha256": {
+      "wheel_sha256": "e73d1d16dc12698584a6a57bcf1800feaddc136bf72d12cdadd1d67cc78991e5",
+      "artifact_manifest_sha256": "c6219429ad0a3912a178708a55ed1ea5789eba5b246d2f1db0f5e1a8a259dee1",
+      "verification.reference_sha256": "a1bff226210741f1883cabf058975ca8a885c23195785cc6c0f9bff95b3c8ad2",
+      "evidence_archive_sha256": "47c7217f4786d1ede2d8fe0c16b7b1e78e39b159d749874ce6bc6cc36a45dce7"
+    }
   },
   "stage_c_runtime_qualification": {
     "status": "Stage C bounded checks passed and user stage review approved",
     "executable_commit": "1478c0acd6d5f8ceca87d4cd1c8cafcb5bc8510a",
-    "batch": "20261022-103635",
-    "server": "inspur-gpu-12",
-    "physical_gpu_indices": [
-      1
-    ],
-    "lock_mode": "soft",
-    "model": "Qwen/Qwen3-0.6B",
-    "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
-    "dtype": "bfloat16",
-    "tensor_parallel_size": 1,
-    "enforce_eager": true,
-    "max_model_len": 512,
-    "max_num_seqs": 4,
-    "kv_cache_memory_bytes": 67108864,
-    "seed": 0,
-    "enable_prefix_caching": true,
-    "distributed_executor_backend": "mp",
-    "wheel_sha256": "3d83780758a9f91f0127bf746d24eab619a40fa4fdcd53ce44c74605d84b4569",
-    "artifact_manifest_sha256": "c6219429ad0a3912a178708a55ed1ea5789eba5b246d2f1db0f5e1a8a259dee1",
-    "environment": "Ubuntu 22.04; CPython 3.12.13; Torch 2.13.0+cu130; vLLM 0.31.0; Ray 2.48.0; CUDA 13.0; driver 610.57.04",
-    "isolation": {
-      "parent_network_namespace": 4026531840,
-      "network_namespace": 4026534306,
-      "interfaces": [
-        "lo"
-      ]
-    },
-    "ray_cpu_resources": {
-      "control": 4,
-      "worker": 4
-    },
-    "checks": {
-      "private_store": true,
-      "http_controller_ray_store_vllm": true,
-      "concurrent_unique_requests": true,
-      "error_then_recovery": true,
-      "four_simultaneous_backend_requests": true,
-      "ray_running_request_cancellation_recovery": true,
-      "real_active_graceful_stop": true,
-      "http_delete_awaited_shutdown": true,
-      "fresh_actor_restart": true,
-      "owned_worker_fault_controlled_recovery": true,
-      "real_init_failure_cleanup_recovery": true,
-      "real_active_forced_shutdown": true,
-      "controller_shutdown": true
-    },
-    "reference": {
-      "raw_prompt": "The capital of France is",
-      "text": " Paris. The capital of France is also",
-      "usage": {
-        "prompt_tokens": 5,
-        "completion_tokens": 8,
-        "total_tokens": 13
-      }
-    },
-    "concurrency_boundary": "Four submitted HTTP requests completed; separate direct Ray backend probe observed four active registry entries and four deterministic 64-token results. This is not a throughput or HTTP streaming qualification.",
-    "fault_boundary": "Worker PID 3463729, exact GPU UUID and current service cgroup verified with pidfd; controlled error in 1.014 s, explicit delete/re-registration recovery. Not automatic fault-tolerance or migration acceptance.",
-    "initialization_failure": {
-      "actor_pid": 3787260,
-      "kv_cache_memory_bytes": 1,
-      "marker": "No available memory for the cache blocks",
-      "evidence": "Only newly written failed actor logs; cleanup and fresh HTTP registration/output recovery passed"
-    },
-    "inherited_http_error_contract": "Invalid sampling and Worker errors are JSON error bodies with HTTP 200; this stage preserves the inherited status behavior.",
-    "cpu": {
-      "result": "294 passed",
-      "elapsed_seconds": 29.84,
-      "profile": "Local WSL CPU baseline suite",
-      "xml": "External stageC/fault-cpu-final.xml"
-    },
-    "ci": "https://github.com/wyx-1236/ServerlessLLM/actions/runs/39764341854",
-    "unit_runtime_seconds": 236.99,
-    "sampled_gpu_peak_mib": 2367,
-    "sampled_cgroup_memory_peak_bytes": 9676324864,
-    "release": "soft unlock GPU 1; inactive/dead unit, no owned PIDs, no compute applications, 0 MiB",
-    "platform_reservation": "User six-hour GPU 1 reservation unchanged; task workloads released only",
-    "evidence_archive": "stage-c-evidence-20261022-103635.tgz",
-    "evidence_archive_bytes": 151315,
-    "evidence_archive_sha256": "d1a9903a94ed47e80546989c5261f454d55a963485defb0c2ec57b7f6c579316",
     "evidence_location": "External engine-upgrade-20261022/stageC collection; local and server archive hashes verified",
-    "acceptance_boundary": "One-host private two-node Ray cluster, one Qwen3-0.6B model, BF16/TP1/eager. Does not qualify original migration, TP2, graph, multi-model isolation, embedding GPU, other models, performance or final serving image."
+    "record_sha256": "835994033cfde0bed13bce42ce4572468c48420127c2b1ff5b85ae365b1bc9bf",
+    "artifact_sha256": {
+      "wheel_sha256": "3d83780758a9f91f0127bf746d24eab619a40fa4fdcd53ce44c74605d84b4569",
+      "artifact_manifest_sha256": "c6219429ad0a3912a178708a55ed1ea5789eba5b246d2f1db0f5e1a8a259dee1",
+      "evidence_archive_sha256": "d1a9903a94ed47e80546989c5261f454d55a963485defb0c2ec57b7f6c579316"
+    }
   },
   "stage_d1_cpu_candidate": {
     "status": "CPU candidate and bounded runtime checks passed; user stage review pending; transparent continuation remains unimplemented",
-    "source_base_commit": "99acc291e050230452cd83ddb5bf0fb74b522c69",
-    "cpu": {
-      "result": "356 passed",
-      "elapsed_seconds": 47.42,
-      "profile": "WSL stageA CPU environment; CUDA_VISIBLE_DEVICES empty",
-      "xml": "External stageD1/cpu-final.xml"
-    },
-    "characterization": {
-      "result": "13 passed in 3.77 s before repairs",
-      "meaning": "Observed defects, not acceptance",
-      "preserved_copy": "External stageD1/test_migration_contract_before_repairs.py"
-    },
-    "repairs": [
-      "Canonical Router pools and Controller constructor compatibility",
-      "Cancellation-safe request finalization and owned target creation/cleanup",
-      "Atomic reservation ownership/capacity and canceled allocation recheck under lock",
-      "Failed migration cannot publish dependent allocation; partial successful moves retained",
-      "Replay error bodies propagate; source cleanup attempted after shutdown errors"
-    ],
-    "reviews": "Scheduler, Router and manual qualifier specification/quality reviews passed; final bounded cross-component review found no new blockers. GPU runtime remains unverified.",
-    "runtime_pending": [
-      "Two distinct physical GPU UUID bindings",
-      "Actual scheduler-triggered target load, paired source tokens and target replay",
-      "Target-specific prefix-cache counters and post-migration HTTP equality",
-      "Real initialization/replay rollback and independent GPU release"
-    ],
-    "preserved_limit": "Original delta threshold and token replay retained; no vLLM resume_generate or transparent continuation; TP2 remains separate",
-    "gpu_usage": "No D1 GPU execution; exact two-GPU approval required",
-    "evidence_location": "External engine-upgrade-20261022/stageD1; personal research vault D1 migration audit note"
+    "evidence_location": "External engine-upgrade-20261022/stageD1; personal research vault D1 migration audit note",
+    "record_sha256": "71b84271d6938be8288c599a70844a56c9082c295fdbeab19ccc247e71ea5596"
   },
   "stage_d1_runtime_qualification": {
     "status": "13 bounded D1 runtime checks passed; transparent continuation remains unimplemented; user stage review pending",
     "executable_commit": "54d099e1d9839637b82773e5ddebb13b2d0ae94a",
-    "batch": "20261022-130523",
-    "server": "inspur-gpu-12",
-    "physical_gpu_indices": [
-      0,
-      1
-    ],
-    "lock_mode": "soft",
-    "model": "Qwen/Qwen3-0.6B",
-    "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
-    "dtype": "bfloat16",
-    "tensor_parallel_size": 1,
-    "enforce_eager": true,
-    "max_model_len": 512,
-    "max_num_seqs": 4,
-    "max_num_batched_tokens": 512,
-    "kv_cache_memory_bytes": 268435456,
-    "seed": 0,
-    "enable_prefix_caching": true,
-    "topology": "One host, private loopback-only namespace, control 4 CPU and two distinct worker nodes with 2 CPU/1 GPU each",
-    "worker_mapping": [
-      {
-        "node_id": "a8f07646c1724d3abe4787ad78431c8c27b1a173a5b1905a6bb0f17c",
-        "visible_devices": "GPU-5b3578d9-81fc-d58e-966d-6492adb4e0bb",
-        "cuda_uuid": "5b3578d9-81fc-d58e-966d-6492adb4e0bb",
-        "tmpdir": "/tmp/sd1-20261022-130523/worker-0",
-        "logical_worker": 0,
-        "physical_gpu_index": 0
-      },
-      {
-        "node_id": "dd29a0a0642072b12582b370f54579bf505d78f407f18914ea55b9a2",
-        "visible_devices": "GPU-c54fa7f6-100a-e15a-9a2e-df2dcc242523",
-        "cuda_uuid": "c54fa7f6-100a-e15a-9a2e-df2dcc242523",
-        "tmpdir": "/tmp/sd1-20261022-130523/worker-1",
-        "logical_worker": 1,
-        "physical_gpu_index": 1
-      }
-    ],
-    "wheel_sha256": "3d83780758a9f91f0127bf746d24eab619a40fa4fdcd53ce44c74605d84b4569",
-    "artifact_manifest_sha256": "c6219429ad0a3912a178708a55ed1ea5789eba5b246d2f1db0f5e1a8a259dee1",
-    "checks": {
-      "private_store": true,
-      "worker_mapping": true,
-      "http_baseline": true,
-      "scheduler_trigger": true,
-      "atomic_publication": true,
-      "active_source_exact_replay": true,
-      "target_history": true,
-      "source_cleanup": true,
-      "fresh_http_equal": true,
-      "target_prefix_cache_hit": true,
-      "init_failure_rollback": true,
-      "replay_failure_rollback": true,
-      "controller_shutdown": true
-    },
-    "scheduler_trigger": {
-      "probe": "qualification-zero-weight-gpu-stage-d1-20261022-130523",
-      "source_node": "1",
-      "weight": 0,
-      "synthetic_metadata_only": true
-    },
-    "migration": {
-      "source_node": "1",
-      "target_node": "0",
-      "paired_replay_iterations": 1,
-      "source_snapshot_sequence_lengths": [
-        436,
-        338,
-        214
-      ],
-      "target_history_sequences": 3,
-      "target_replay_output_tokens_per_sequence": 1,
-      "final_delta_replayed": false
-    },
-    "target_prefix_cache": {
-      "pid": 2424357,
-      "before": {
-        "queries": 993.0,
-        "hits": 544.0
-      },
-      "after": {
-        "queries": 1429.0,
-        "hits": 976.0
-      },
-      "delta": {
-        "queries": 436.0,
-        "hits": 432.0
-      }
-    },
-    "request_terminals": {
-      "ledger_scope": "Same list also accumulates later fault-case pump terminals; not 74 simultaneous requests",
-      "total": 74,
-      "length": 69,
-      "abort": 3,
-      "admission_error": 2,
-      "admission_error_body": "Engine is not running",
-      "abort_completion_tokens": [
-        347,
-        249,
-        125
-      ],
-      "transparent_continuation": false
-    },
-    "reference": {
-      "raw_prompt": "The capital of France is",
-      "text": " Paris. The capital of France is also",
-      "usage": {
-        "prompt_tokens": 5,
-        "completion_tokens": 8,
-        "total_tokens": 13
-      },
-      "fresh_http_choices_and_usage_equal": true
-    },
-    "init_failure": {
-      "actor_pid": 2425088,
-      "kv_cache_memory_bytes": 1,
-      "marker": "No available memory for the cache blocks",
-      "actor_new_log": "/tmp/sd1-20261022-130523/ray/session_latest/logs/worker-3f44150015e70283b33381944215b6b2dcf2a523a5ae59601dfe854b-01000000-2425088.err",
-      "resource_boundary": {
-        "ray_free_gpu": 1.0,
-        "target_memory_mib": 429
-      }
-    },
-    "replay_failure": {
-      "actor_pid": 2425852,
-      "max_model_len": 16,
-      "actual_replay_prompt_tokens": 448,
-      "reason": "Actual vLLM maximum context length rejection propagated through resume_kv_cache",
-      "resource_boundary": {
-        "ray_free_gpu": 1.0,
-        "target_memory_mib": 429
-      }
-    },
-    "cleanup_completed": true,
-    "cleanup_errors": [],
-    "unit_runtime_seconds": 269.609,
-    "qualification_seconds": 267.868581533432,
-    "sample_count": 80,
-    "sampled_gpu_peak_mib": {
-      "0": 2415,
-      "1": 2415
-    },
-    "sampled_cgroup_memory_peak_bytes": 14422491136,
-    "release": "soft unlock GPU 0,1; inactive/dead unit, no owned PIDs, no compute applications, both GPUs 0 MiB",
-    "platform_reservation": "Task workloads released only; no platform reservation cancellation requested",
-    "ci": "https://github.com/wyx-1236/ServerlessLLM/actions/runs/39783768472",
-    "evidence_archive": "stage-d1-evidence-20261022-130523.tgz",
-    "evidence_archive_bytes": 222633,
-    "evidence_archive_sha256": "3327ae67b88d4f0e5debd1b2ca68f3c67aac43bbd83730b9a68bd4d9bf8f1fc3",
     "evidence_location": "External engine-upgrade-20261022/stageD1; local/server archive hash verified",
-    "failed_batch": {
-      "batch": "20261022-130131",
-      "commit": "2cb0105101c3fab3e5c4ca4da83375e884304f53",
-      "cause": "Torch bare UUID vs approved GPU-prefixed UUID representation; fixed strict normalization in54d099e",
-      "archive_sha256": "a5dfc0c9d9699642de0f52332c15826c0a4f1a142a71f5c5cfb84edac82b9514",
-      "released": true
-    },
-    "acceptance_boundary": "Qualifies repaired original token-replay chain and two rollback cases for one Qwen TP1/eager model on one host. Does not qualify transparent active-request continuation, original-version GPU terminal equivalence, TP2, graph, cross-server migration, other models, performance or final serving image. Full baseline acceptance remains blocked on remaining requirements."
+    "record_sha256": "61823e689a7737d376cf007a453c72b9344d371061554b62cfade97e13d2cb66",
+    "artifact_sha256": {
+      "wheel_sha256": "3d83780758a9f91f0127bf746d24eab619a40fa4fdcd53ce44c74605d84b4569",
+      "artifact_manifest_sha256": "c6219429ad0a3912a178708a55ed1ea5789eba5b246d2f1db0f5e1a8a259dee1",
+      "evidence_archive_sha256": "3327ae67b88d4f0e5debd1b2ca68f3c67aac43bbd83730b9a68bd4d9bf8f1fc3",
+      "failed_batch.archive_sha256": "a5dfc0c9d9699642de0f52332c15826c0a4f1a142a71f5c5cfb84edac82b9514"
+    }
   },
   "original_function_audit_20261023": {
-    "date": "2026-10-23",
     "status": "Source/CPU audit complete; compatibility revision awaiting user review; no production changes or new GPU use",
     "upstream_commit": "9f50241baa5386e06a9321c51f19a9ef5f964c2b",
     "audited_candidate_commit": "722160025ab0131bd865502cb9cfd5e6b9959430",
-    "source_files": 31,
-    "byte_identical_files": 21,
-    "source_manifest_sha256": "c5dea432fae3710fcca58cbed8275f395932989d915b4bed13e71703fdadd2d2",
-    "cpu_comparison": {
-      "result": "26 passed",
-      "elapsed_seconds": 2.41,
-      "xml": "comparison-complete.xml",
-      "method": "Selected actual frozen AST method bodies with CPU doubles; explicit upstream pool alias only to reach deeper Router protocol; not old-engine E2E"
-    },
-    "current_focused": {
-      "result": "69 passed",
-      "elapsed_seconds": 20.23,
-      "xml": "current-focused.xml"
-    },
-    "confirmed_findings": [
-      "Project documents promise zero-downtime migration; official example backend is Transformers",
-      "Original Transformers returns preempted/current_output/completed_tokens and has resume_generate",
-      "Original and candidate VllmBackend lack resume_generate; existing D1 three active aborts do not satisfy project-level continuation intent",
-      "Original target may promote one-token-longer warmup sequence; controlled method counterexample returns5completiontokens for original4budget",
-      "Candidate rejects formerly accepted pattern/max_size; original patch accepted but did not use either argument",
-      "Store CLI export retains old patch entrypoint and has not delegated to new preparation pipeline",
-      "Debug completed-history behavior changed; current legacy tests import current checkout, not frozen upstream",
-      "Shared dependencies and control-plane changes require affected original feature regressions despite unchanged backend files"
-    ],
-    "server_dependency_probe": {
-      "status": "SSH connection timed out",
-      "source_only": true,
-      "gpu_used": false,
-      "consequence": "Installed Transformers/PEFT runtime compatibility not established by this probe"
-    },
-    "gpu_usage": "None; previous D1 release evidence historical only; no current reservation or workload started",
-    "implementation": "Not performed; user review required",
     "evidence_location": "External engine-upgrade-20261022/stageD1/original-contract-audit-20261023",
-    "scope_exclusions": [
-      "Real original engine/migration run",
-      "Updated dependency real Transformers/LoRA/fine-tuning/embedding validation",
-      "Store CLI GPU export validation",
-      "Complete project compatibility or final acceptance"
-    ]
+    "record_sha256": "662b6eecc3ffd033052e94cf6bfa61d062f7e92cbb3254577ad9485edb7ea4b1",
+    "artifact_sha256": {
+      "source_manifest_sha256": "c5dea432fae3710fcca58cbed8275f395932989d915b4bed13e71703fdadd2d2"
+    }
   },
   "continuation_server_cpu_20261111": {
     "status": "Server deployment and no-GPU preflight passed; user review pending; no GPU runtime qualification",
     "commit": "c3af9088dc239dcfa6a317502bcfa7efd20daac6",
-    "server": "inspur-gpu-12",
-    "deployment_directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2-c3af908-20261111/source",
-    "source_archive_sha256": "80542efa36178ea4d2eb778abcbb68201b6d8a5922d5b5002f5b33e3380dd5aa",
-    "source_validation": "352 archived files and symlink payloads match committed Git blobs byte-for-byte; core.autocrlf=false; rechecked after build and tests",
-    "dependency_lock_sha256": "b95c64f6357b653f3e1e45e7dddfe4b3efdcd8f9ae9ef926fce82dd7be025ec0",
-    "environment": "Python 3.12.13; 222 locked dependencies plus two locally built wheels; uv frozen check and 224-package dependency compatibility check passed",
-    "main_wheel_sha256": "0bcbc6688dc0f9f10283c6cc9b8a57d29ef2218de2a7a0bb1c4bceaf456d9575",
-    "store_wheel_sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
-    "server_tests": {"passed": 275, "failed": 0, "skipped": 0, "elapsed_seconds": 17.83},
-    "additional_checks": [
-      "Installed lazy preparation/Worker modules, main compatibility shim and packaged lock receipt",
-      "Ten pinned vLLM source files match the committed fixture hashes",
-      "Native extensions load; seven CPU writer boundary sizes and alias/padding checks pass",
-      "Installed CLI help/options and private gRPC/protobuf roundtrip pass",
-      "Historical Qwen Store artifact integrity passes; no restore performed"
-    ],
-    "isolation": "No GPU device nodes; CUDA_VISIBLE_DEVICES empty; CUDA remains uninitialized; build/probes use private offline network namespaces",
-    "recovered_failures": "VPN connectivity, archive newline conversion, cache paths and SSH session lifetime corrected. Initial Ray CPU run timed out because hostname resolution selected the external IP inside a private network; namespace-local hosts mapping fixed it without production or global network changes. Failed attempts retained.",
-    "cleanup": "All task CPU units inactive/failed with MainPID=0 and no remaining owned processes; no GPU lock or unlock performed",
-    "gpu_used": false,
-    "evidence_archive": "server-cpu-evidence.tgz",
-    "evidence_archive_sha256": "0a94e4544480ad2dd8535c5128fda72d82ad88ebd41257ce87a8777f570b8e95",
     "evidence_location": "External engine-upgrade-20261111/continuation-candidate/server-evidence; local/server archive hashes verified",
-    "acceptance_boundary": "Deployment and CPU preparation only. Rebuilt native binaries require fresh GPU qualification. No real engine construction, model export/restore, same-request HTTP continuation, GPU release, Transformers full-model/LoRA/training/embedding, TP2, graph, performance or final-image qualification."
+    "record_sha256": "92c86f22c1c6a73c50f5cde8af253d5620db7476a7890c8a8282162306498ea8",
+    "artifact_sha256": {
+      "source_archive_sha256": "80542efa36178ea4d2eb778abcbb68201b6d8a5922d5b5002f5b33e3380dd5aa",
+      "dependency_lock_sha256": "b95c64f6357b653f3e1e45e7dddfe4b3efdcd8f9ae9ef926fce82dd7be025ec0",
+      "main_wheel_sha256": "0bcbc6688dc0f9f10283c6cc9b8a57d29ef2218de2a7a0bb1c4bceaf456d9575",
+      "store_wheel_sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
+      "evidence_archive_sha256": "0a94e4544480ad2dd8535c5128fda72d82ad88ebd41257ce87a8777f570b8e95"
+    }
   },
   "continuation_evidence_server_cpu_20261112": {
     "status": "Complete-failure-evidence candidate deployed; CPU preflight passed; GPU diagnosis requires a new approved batch",
     "commit": "3b8b8b89ab98206e6c84d606e781b1b504cd8267",
-    "server": "inspur-gpu-12 (192.168.5.188)",
-    "deployment_directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2-3b8b8b8-20261112/source",
-    "source_archive_sha256": "fb26778a73e8c56f6d91bbc9c9d974a683668da06e5c811b3f51b56cd36be79d",
-    "source_validation": "352 archive entries match committed Git blobs; checked again on the server after build and tests; installed main and native Store wheel payloads verified byte-for-byte",
-    "environment": "Independent Python 3.12.13 environment; 222 locked dependencies plus two project wheels; offline lock check and 224-package compatibility check passed",
-    "main_wheel_sha256": "be514f24c6cfa563998c34b21986b51c94312724998da9097da95051328fe5ed",
-    "store_wheel_sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
-    "store_reuse": "Native wheel reused after unchanged Store source and dependency lock were verified; no new native build or GPU qualification claimed",
-    "server_tests": {"passed": 651, "failed": 0, "skipped": 0, "elapsed_seconds": 43.364},
-    "additional_checks": "Eleven pinned vLLM source hashes; installed lazy preparation; native reader/writer imports; seven CPU writer boundary sizes; artifact integrity; CLI help and private gRPC/protobuf roundtrip",
-    "isolation": "Private offline network and device namespaces; no NVIDIA device nodes; CUDA_VISIBLE_DEVICES empty; CUDA uninitialized before and after checks",
-    "cleanup": "Task CPU unit inactive with MainPID=0 and no remaining owned processes; no GPU lock or unlock performed",
-    "gpu_entry": "Separate candidate-bound entry prepared; CPU compilation and missing-approval, wrong-GPU and expired-approval rejection checks passed; no valid GPU launch attempted",
-    "gpu_used": false,
     "evidence_location": "External engine-upgrade-20261112/continuation-evidence-candidate/repair-server-evidence",
-    "evidence_archive_sha256": "e26bbd75373e7deef320c5be6080d781ebb25a7dc1e8ca63ecb7e228ba9e265b",
-    "acceptance_boundary": "Deployment and CPU readiness only. Cross-request GPU logprob differences remain unexplained; strict full-output equivalence and actual continuation qualification remain pending."
+    "record_sha256": "9126a763ddb2b4b28cc3f88af7e6bd2cda21231e46c61ffec499073902c501ba",
+    "artifact_sha256": {
+      "source_archive_sha256": "fb26778a73e8c56f6d91bbc9c9d974a683668da06e5c811b3f51b56cd36be79d",
+      "main_wheel_sha256": "be514f24c6cfa563998c34b21986b51c94312724998da9097da95051328fe5ed",
+      "store_wheel_sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
+      "evidence_archive_sha256": "e26bbd75373e7deef320c5be6080d781ebb25a7dc1e8ca63ecb7e228ba9e265b"
+    }
   },
   "continuation_failure_evidence_cpu_20261112": {
     "status": "Failure-evidence repair passed CPU checks; uncommitted review candidate, not deployed; numerical mismatch unresolved",
-    "source_base_commit": "b7f65c8",
-    "changed_file_sha256_raw_bytes": {
-      "scripts/baseline/continuation_evidence.py": "eb9793196764fdf044b67c9e54de4524bf1dd4ff4ad5e0bbd27b1d7493164da3",
-      "scripts/baseline/qualify_continuation.py": "2b55efb6abc3f871cb2714fed17a443121eaef15fc01ba812e3df767e4b53f0e",
-      "tests/baseline/test_continuation_flow.py": "6e123e33ec1e90c2ce5ad3fba32c55f7e0d5b30bd2a421dc50f3a380d57428f8",
-      "tests/baseline/test_continuation_evidence.py": "89f93c6c8fd20862251f6fbccb87ecc49e14fc20e6d216ae0475845cfa3bdb06"
-    },
-    "regression_before_fix": "Six new cases failed: comparison inputs were not on disk before validation, and mismatch exceptions contained no exact difference details",
-    "light_cpu": {"passed": 630, "failed": 0, "skipped": 21, "elapsed_seconds": 116.23},
-    "tensor_and_transformers_cpu": {"passed": 77, "failed": 0, "skipped": 0, "elapsed_seconds": 24.50},
-    "skip_reconciliation": "All 21 light-profile Torch skips matched by classname and test name to fresh passing cases in the complementary run; zero unresolved dependency skips",
-    "static_checks": "Ruff 0.6.9 format and lint passed for all four changed Python files; JSON parsing and git diff --check passed",
     "evidence_location": "External engine-upgrade-20261112/continuation-gpu-repair/evidence-repair-light.xml and evidence-repair-torch.xml",
-    "compatibility": "Persist diagnostic comparison inputs before validation and preserve exact mismatch details. Strict equality, ordinary serving responses, sampling parameters and cleanup ownership unchanged.",
-    "gpu_used": false,
-    "acceptance_boundary": "CPU qualification of failure evidence only; does not repair or qualify the unexplained cross-request GPU logprob differences"
+    "record_sha256": "25476491d7a06dc7c205a81b44fcd25455936ed1edd2ba26cda8082eb533e2d7",
+    "artifact_sha256": {
+      "changed_file_sha256_raw_bytes.scripts/baseline/continuation_evidence.py": "eb9793196764fdf044b67c9e54de4524bf1dd4ff4ad5e0bbd27b1d7493164da3",
+      "changed_file_sha256_raw_bytes.scripts/baseline/qualify_continuation.py": "2b55efb6abc3f871cb2714fed17a443121eaef15fc01ba812e3df767e4b53f0e",
+      "changed_file_sha256_raw_bytes.tests/baseline/test_continuation_flow.py": "6e123e33ec1e90c2ce5ad3fba32c55f7e0d5b30bd2a421dc50f3a380d57428f8",
+      "changed_file_sha256_raw_bytes.tests/baseline/test_continuation_evidence.py": "89f93c6c8fd20862251f6fbccb87ecc49e14fc20e6d216ae0475845cfa3bdb06"
+    }
   },
   "continuation_gpu_20261112_083638": {
     "status": "Failed strict full-output comparison; no continuation qualification",
     "commit": "f73b5a1d1aa362ba15ff8ba578b04ed4f5cbc1f7",
-    "server": "inspur-gpu-12 (192.168.5.188)",
-    "resource_request": "soft lock GPU 1,2",
-    "elapsed_seconds_including_release": 210.4093999862671,
-    "coverage": "Private Store, worker mapping and baseline HTTP passed; all 21 greedy HTTP attempts returned 200; three requests were frozen and activated at target; strict output/control comparison failed before seeded multi-choice and later cache/ledger checks",
-    "failure": "ValueError: Full output tokens/text/logprobs differ from the control. Previous first-prefill assertion did not recur.",
-    "evidence_gap": "Official reference history and final target history were only assigned after successful validation, so both are absent from the failed scenario record",
-    "retained_evidence_analysis": {
-      "comparison": "Supplemental comparison with an earlier same-parameter nonmigrated HTTP request, not the missing official reference",
-      "frozen_output_lengths": [194, 317, 256],
-      "preserved": "All three frozen text prefixes and per-token logprobs exactly match the corresponding prefixes of final HTTP responses",
-      "observed": "All three migrated responses have matching final text, finish reason and usage against the supplemental control, but differing logprobs; 17 other nonmigrated responses also differ in logprobs. Differences already exist in frozen source prefixes.",
-      "limitation": "Does not establish complete token equality or the cause of the official comparison failure. Numerical execution/batching remains an unproven hypothesis; no tolerance or comparison relaxation applied.",
-      "report": "retained-comparison.json"
-    },
-    "resource_release": "soft unlock GPU 1,2",
-    "cleanup": "Task unit inactive, no remaining owned PIDs or GPU compute processes; GPU 1 memory 0 MiB and GPU 2 memory 1 MiB; platform reservation unchanged",
-    "sampled_peak_gpu_mib": {"1": 2415, "2": 2415},
     "evidence_location": "External engine-upgrade-20261112/continuation-gpu-repair/evidence-20261112-083638",
-    "evidence_archive_sha256": "faec869293d9c3c3effc19f3f81cf3eb185dc48c097fab7c2ea114ffb15d270b",
-    "archive_hash_verified": true
+    "record_sha256": "bb25673d9b1396c70d6f72bb1f18742cfe58c32c62493907a849f2fd54acfc4a",
+    "artifact_sha256": {
+      "evidence_archive_sha256": "faec869293d9c3c3effc19f3f81cf3eb185dc48c097fab7c2ea114ffb15d270b"
+    }
   },
   "continuation_repair_server_cpu_20261112": {
     "status": "Repaired candidate deployed and CPU preflight passed; GPU continuation rerun pending explicit approval",
     "commit": "f73b5a1d1aa362ba15ff8ba578b04ed4f5cbc1f7",
-    "server": "inspur-gpu-12 (192.168.5.188)",
-    "deployment_directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2-f73b5a1-20261112/source",
-    "source_archive_sha256": "16ec5ef6a9879ec0b60ba797aa25b3079ae5200cdd7139adb324be78ea442ef4",
-    "source_validation": "352 archive entries match committed Git blobs; server source rechecked after build and tests; installed main and Store wheel payloads verified byte-for-byte",
-    "environment": "Independent Python 3.12.13 environment; 222 locked dependencies plus two project wheels; dependency lock check and 224-package compatibility check passed",
-    "main_wheel_sha256": "53cdffe6c290f3de05e44ec14c5cb3a229caa4b8e1d020ac41b7f1329369d1e3",
-    "store_wheel_sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
-    "store_reuse": "Reused the c3af908 native wheel after verifying Store source and dependency lock are unchanged; this is not fresh GPU qualification",
-    "server_tests": {"passed": 643, "failed": 0, "skipped": 0, "elapsed_seconds": 42.485},
-    "additional_checks": "Eleven pinned vLLM source hashes; installed lazy preparation; native reader/writer imports; seven CPU writer boundary sizes; artifact integrity; CLI help and private gRPC/protobuf roundtrip",
-    "isolation": "Offline network namespace, private device namespace without NVIDIA nodes, CUDA_VISIBLE_DEVICES empty; CUDA uninitialized before and after checks",
-    "recovered_failures": "Dependency-only exact sync rejected separately installed project wheels, corrected with inexact lock check and wheel identity verification. Detached SSH ended the user service, corrected by waiting for completion. Incorrectly combining CPU-only profiles with the serving environment caused version/import-isolation failures; restored profile boundaries and reran all 643 server baseline cases. Fresh separate local CPU profiles passed 77 cases, as recorded below. Failed attempts retained.",
-    "cleanup": "All four task CPU units inactive with MainPID=0; no remaining owned processes; no GPU lock or unlock performed",
-    "gpu_used": false,
     "evidence_location": "External engine-upgrade-20261112/continuation-gpu/repair-server-evidence",
-    "evidence_archive_sha256": "64ec1d06519dd27a5a4f46f96a85d942cbad37e022889dcc21839e4b341ca049",
-    "acceptance_boundary": "CPU deployment readiness only. Real same-request HTTP continuation and seeded multi-choice on the repaired candidate remain unqualified."
+    "record_sha256": "fa4c26dd365a942c4af639acb84d891373eab3b309ed5e94862f91997ce948a0",
+    "artifact_sha256": {
+      "source_archive_sha256": "16ec5ef6a9879ec0b60ba797aa25b3079ae5200cdd7139adb324be78ea442ef4",
+      "main_wheel_sha256": "53cdffe6c290f3de05e44ec14c5cb3a229caa4b8e1d020ac41b7f1329369d1e3",
+      "store_wheel_sha256": "b6465a3ecc6599f49ed3a84cda1d345641a2f4756544a2c6401686fb614696db",
+      "evidence_archive_sha256": "64ec1d06519dd27a5a4f46f96a85d942cbad37e022889dcc21839e4b341ca049"
+    }
   },
   "continuation_prefill_repair_cpu_20261112": {
     "status": "CPU repair passed; uncommitted candidate awaiting review; not deployed",
-    "source_base_commit": "2539ee0fd1e6e6b998776f500e6b6653c1595222",
-    "changed_file_sha256_raw_bytes": {
-      "sllm/backends/vllm_resume_scheduler.py": "f93732694e94894eb8f133db69161380e38d11066217701c7d4046c9f3711474",
-      "tests/baseline/test_vllm_resume_adapter.py": "31b87267fb683bd1bd5d69fb1a3d4e0788eaadfbed51d38b545ce9bc60a60a10",
-      "tests/baseline/fixtures/vllm-0.31.0-resume-source.json": "7f9f575cb8aa0884452ef2ec8ed793be52ea93aff5b872909dc2d898dcd9eac7"
-    },
-    "regression_before_fix": "6 failed, 8 passed, 24 deselected; two failures reproduce the upstream assertion for cache hit 3 > prompt length 2 in synchronous and asynchronous modes; four expose duplicate first-prefill stats",
-    "focused_after_fix": {"passed": 38, "failed": 0, "elapsed_seconds": 22.50},
-    "baseline_and_legacy_backend": {
-      "passed": 622,
-      "failed": 0,
-      "skipped": 21,
-      "elapsed_seconds": 110.42,
-      "skips": "Torch-dependent Store tests in the light environment; all 21 matched by classname and test name to passing cases in the fresh complementary CPU run below"
-    },
-    "fresh_tensor_and_transformers_cpu": {
-      "passed": 77,
-      "failed": 0,
-      "skipped": 0,
-      "elapsed_seconds": 28.88,
-      "environment": "Python 3.12.13, Torch 2.13.0+cpu, Transformers 5.17.0; CUDA_VISIBLE_DEVICES empty and Hugging Face offline mode",
-      "preflight": "Torch imports successfully, torch.version.cuda is None and CUDA is not initialized",
-      "scope": "Tensor layout, vLLM Store plugin, artifact and Transformers cache CPU tests; vLLM/native boundaries remain doubles",
-      "light_skip_reconciliation": "21 of 21 light-profile skipped cases matched to fresh passes; zero unresolved dependency skips",
-      "evidence_location": "External engine-upgrade-20261112/continuation-gpu/prefill-repair-torch-cpu.xml"
-    },
-    "source_verification": "Eleven pinned vLLM 0.31.0 source hashes checked; real Request and PrefillStats plus the exact Scheduler first-prefill branch execute with CPU doubles; no full engine run",
-    "static_checks": "Ruff 0.6.9 format and lint passed for both changed Python files; git diff --check passed",
     "evidence_location": "External engine-upgrade-20261112/continuation-gpu/prefill-repair-cpu.xml",
-    "gpu_used": false,
-    "compatibility": "Nonempty restored output consumes first-prefill stats once; ordinary and zero-output requests retain upstream stats. No prompt extension, cache-hit truncation, fabricated preemption, request-budget or HTTP usage change.",
-    "acceptance_boundary": "CPU regression only. Server remains on c3af908; real same-request HTTP continuation, seeded multi-choice and GPU cleanup on the repaired candidate require new qualification."
+    "record_sha256": "19396cca5a5979a8974d0ba105c2fcb424872061e08a9260f86b13334c883684",
+    "artifact_sha256": {
+      "changed_file_sha256_raw_bytes.sllm/backends/vllm_resume_scheduler.py": "f93732694e94894eb8f133db69161380e38d11066217701c7d4046c9f3711474",
+      "changed_file_sha256_raw_bytes.tests/baseline/test_vllm_resume_adapter.py": "31b87267fb683bd1bd5d69fb1a3d4e0788eaadfbed51d38b545ce9bc60a60a10",
+      "changed_file_sha256_raw_bytes.tests/baseline/fixtures/vllm-0.31.0-resume-source.json": "7f9f575cb8aa0884452ef2ec8ed793be52ea93aff5b872909dc2d898dcd9eac7"
+    }
   },
   "continuation_gpu_20261112_074958": {
     "status": "Failed at target first-prefill accounting; no continuation qualification",
     "commit": "c3af9088dc239dcfa6a317502bcfa7efd20daac6",
-    "server": "inspur-gpu-12 (192.168.5.188)",
-    "resource_request": "soft lock GPU 1,2",
-    "runtime_seconds": 211.01699781417847,
-    "failure": "vLLM 0.31.0 Scheduler.schedule line 1035 asserts num_computed_tokens <= request.num_prompt_tokens after restored output history enters target-local prefix-cache lookup",
-    "coverage": "Real Store/Ray/model initialization and greedy freeze/prepare/resume reached; three migrated HTTP requests failed; seeded multi-choice scenario not reached; no retry",
-    "resource_release": "soft unlock GPU 1,2",
-    "cleanup": "Verified no remaining task-owned PIDs or GPU compute processes; both GPUs returned to their measured 4 MiB idle baseline; platform reservation unchanged",
     "evidence_location": "External engine-upgrade-20261112/continuation-gpu/evidence-20261112-074958",
-    "evidence_archive_sha256": "9ca976fd185bd7ca19aac5a321f808b631fcdc3b87100d524344dc13a6876bd6",
-    "archive_hash_verified": true,
-    "acceptance_boundary": "Failure and cleanup evidence only. The subsequent CPU repair requires a new reviewed deployment and separately approved GPU qualification."
+    "record_sha256": "6818306c901a4ec8c92c287a79c182064c163e40cc14cca90dd8c5eaa0fb058d",
+    "artifact_sha256": {
+      "evidence_archive_sha256": "9ca976fd185bd7ca19aac5a321f808b631fcdc3b87100d524344dc13a6876bd6"
+    }
   },
   "continuation_cpu_candidate_20261111": {
     "status": "CPU candidate passed; no GPU continuation qualification",
-    "source_base_commit": "119a1a82de5bf21e60e4dee836ef109d33587be8",
-    "indexed_code_identity_sha256": "81e669e13bd4f9bc45eeeccc33d83e206ce8c8691b1b5b1c0abeab3c67d76149",
-    "identity_method": "SHA256 of newline-terminated git ls-files -s records for sllm, sllm_store, scripts, tests and root runtime dependency manifests; documentation excluded to avoid self-reference",
-    "baseline": {
-      "passed": 608,
-      "skipped": 21,
-      "elapsed_seconds": 99.63,
-      "skips": "Torch-dependent Store cases; covered by the separate CPU Torch profile"
-    },
-    "torch_and_transformers": {
-      "passed": 77,
-      "skipped": 0,
-      "elapsed_seconds": 18.97
-    },
-    "engine": "vLLM 0.31.0 V2 fixed-source CPU checks; no full engine execution",
-    "runtime_entry": "scripts/baseline/qualify_continuation.py",
-    "gpu_used": false,
-    "external_release_verified": false,
     "limitations": [
       "Same-request HTTP/GPU execution not yet run",
       "EOS/stop and fault-continuation GPU cases remain separate",
       "No TP2, model-matrix, performance or final-image qualification"
-    ]
+    ],
+    "record_sha256": "9f1375b51a19bffb91ba1e328e7666aefb69f050b2f43da0f8a5840d55746908",
+    "artifact_sha256": {
+      "indexed_code_identity_sha256": "81e669e13bd4f9bc45eeeccc33d83e206ce8c8691b1b5b1c0abeab3c67d76149"
+    }
   }
 }

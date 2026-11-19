@@ -1,22 +1,5 @@
 {
-  "stopping_cpu_candidate": {
-    "commit": "aaf4fa58554b046a49e7d964f93b7131e335fcb3",
-    "status": "Tokenizer preparation repaired; complete isolated server CPU checks and actual Qwen tokenizer probe passed; real stopping GPU qualification pending",
-    "plan": "migration-stopping-qualification-plan.md",
-    "evidence": "evidence-index.json#stopping_tokenizer_repair_cpu_20261113",
-    "server_deployment_directory": "/home/LAB/wangyx28/serverlessllm-baseline-upgrade/stageD2S-aaf4fa5-20261113/source",
-    "ordinary_defaults_changed": false,
-    "gpu_used": false,
-    "qualification_remaining": "EOS and include/exclude stop-string cross-freeze behavior require new bounded GPU execution; stage D remains incomplete"
-  },
   "schema_version": 1,
-  "continuation_gpu_candidate": {
-    "commit": "6938fe106868ca9ef4619a3ffb83473babff39bd",
-    "status": "Two bounded GPU scenarios passed; user stage review pending",
-    "runtime_evidence": "evidence-index.json#continuation_gpu_20261112_113642",
-    "configuration": "Qwen3-0.6B BF16/TP1/eager, vLLM 0.31.0 V2, FLASH_ATTN, explicit batch-invariant-v1",
-    "ordinary_defaults_changed": false
-  },
   "upstream": {
     "url": "https://github.com/ServerlessLLM/ServerlessLLM",
     "reference_commit": "9f50241baa5386e06a9321c51f19a9ef5f964c2b",
@@ -35,16 +18,6 @@
     "dependency_lock_sha256": "b95c64f6357b653f3e1e45e7dddfe4b3efdcd8f9ae9ef926fce82dd7be025ec0",
     "environment_scope": "Linux x86_64, CPython 3.12; bounded native Store and Qwen3-0.6B BF16/TP1/eager service qualification recorded in evidence-index.json; final image and broader combinations pending"
   },
-  "design_source": {
-    "repository_document": "docs/plans/serverlessllm-vllm-upgrade/README.md",
-    "source_sha256": "cb6eb9b910ad88cf637100d57ad974cbb41ad46645d7092bfa3a5ea70f819ca5",
-    "fork_document": "engine-upgrade.md",
-    "adaptations": [
-      "Replaced sibling-repository links with a self-contained evaluation contract",
-      "Made the fork document authoritative for SLLM-only implementation",
-      "Omitted machine-specific workspace paths"
-    ]
-  },
   "historical_candidate02": {
     "patch_sha256": "0c8302d23a523ee8406f0d624cd0a08b1e8b1079d8481dd232f80e11b212e0e7",
     "declared_source_manifest_sha256": "e195ab47c96099202a49a232cdb81460d9ece8b5f278b15a59c4e148b702cdef",
@@ -55,73 +28,18 @@
         "change": "Lazy backend imports; extended to all three backends for dependency-free configuration checks"
       }
     ],
-    "review_required": "Remaining fixes are assigned to stages B, C or D in patch-audit.md"
+    "review_required": "Historical patch was not applied wholesale; adopted changes are listed above. Compatibility gaps remain in compatibility-matrix.md."
   },
   "historical_research": {
     "collection": "engine-route-evaluation-20261016",
     "evidence_index": "evidence-index.json",
     "adopted_source_changes": []
   },
-  "stage_b_candidate": {
-    "status": "Stage B bounded checks passed and user stage review approved",
-    "components": [
-      "Checked native O_DIRECT writer finalization and failure propagation",
-      "Versioned raw-storage and logical tensor/buffer/alias layout",
-      "vLLM 0.31.0 lazy plugin, named Worker export and Store loader",
-      "Frozen source and exact artifact identity, independent offline restore transaction",
-      "Temporary actor cleanup and preparation-before-Store registration",
-      "Aligned native O_DIRECT logical range reads across partition boundaries"
-    ],
-    "historical_adaptation": "Research provided the Worker-extension and persistent-buffer restore approach; production contracts were reimplemented with explicit identity, bounds, cleanup and failure tests, without applying the historical engine patch",
-    "tensor_test_profile": "tests/baseline/requirements-tensor-cpu.txt",
-    "qualification_remaining": "Stage C bounded service checks and user review passed; original migration and TP2 in D; broader models and metrics in E; final serving image remains unbuilt",
-    "runtime_evidence": "evidence-index.json#stage_b_runtime_qualification",
-    "tested_executable_commit": "fef30ee9bab49fa7bf8b8b9ff53e60b9157ef4b3"
-  },
-  "code_scope": "A environment/configuration; B native writer/reader/plugin/artifact; C service/lifecycle; D1 repaired original migration chain and rollback. D2 bounded greedy and seeded-multi continuation passed on 6938fe1 with explicit batch-invariant-v1; stage review, other continuation boundaries, TP2 and broader release requirements remain pending.",
-  "gpu_usage": "Four Stage B batches and four Stage C batches, explicitly approved soft lock GPU 1 on inspur-gpu-12. Failures preserved; B and bounded C passed. All task workloads released with no owned PIDs, no compute apps and 0 MiB; user six-hour platform reservation unchanged. D1 used two separately approved batches on inspur-gpu-12 soft lock GPU 0,1; bounded original-chain checks passed, both batches released and evidence archived; platform reservations unchanged.",
-  "stage_c_candidate": {
-    "status": "Stage C bounded checks passed and user stage review approved",
-    "tested_executable_commit": "1478c0acd6d5f8ceca87d4cd1c8cafcb5bc8510a",
-    "components": [
-      "Pinned vLLM compatibility and explicit partial-engine cleanup",
-      "Atomic request ownership, cancellation, graceful drain and forced shutdown",
-      "Controller/Router/FCFS resource ownership and actor cleanup",
-      "Explicit Store root/address and committed artifact identity",
-      "Private HTTP/Ray/native Store qualification including real Worker and initialization faults"
-    ],
-    "runtime_evidence": "evidence-index.json#stage_c_runtime_qualification",
-    "qualification_remaining": "One-host private two-node Ray cluster, one Qwen3-0.6B model, BF16/TP1/eager. Does not qualify original migration, TP2, graph, multi-model isolation, embedding GPU, other models, performance or final serving image."
-  },
-  "stage_d1_candidate": {
-    "status": "Bounded original migration-chain and rollback checks passed; user review pending; transparent continuation remains a qualification gap",
-    "plan": "migration-lifecycle-plan.md",
-    "evidence": "evidence-index.json#stage_d1_cpu_candidate",
-    "algorithm": "Original latency planner, source token sampling, delta threshold and one-token target replay retained",
-    "regression_repaired": "Stage C moved ownership registration into FCFS control loop; StorageAware override now participates",
-    "inherited_gap": "No transparent active-request continuation in vLLM; do not accept abort/cancel as resume_generate",
-    "gpu_execution": "Approved soft lock GPU 0,1 on inspur-gpu-12; first batch UUID representation assertion failed, second passed13checks; both independently released, no owned PIDs/apps and0MiB",
-    "tested_executable_commit": "54d099e1d9839637b82773e5ddebb13b2d0ae94a",
-    "runtime_evidence": "evidence-index.json#stage_d1_runtime_qualification"
-  },
-  "original_function_audit_20261023": {
-    "upstream_commit": "9f50241baa5386e06a9321c51f19a9ef5f964c2b",
-    "audited_candidate_commit": "722160025ab0131bd865502cb9cfd5e6b9959430",
-    "document": "original-function-audit.md",
-    "revised_proposal": "migration-continuation-proposal.md",
-    "status": "Read-only functional audit and proposal revision, pending user review; production unchanged",
-    "evidence": "evidence-index.json#original_function_audit_20261023"
-  },
-  "continuation_cpu_candidate": {
-    "engine_version": "0.31.0",
-    "model_runner": "V2 required for request migration; unsupported configurations fail before freezing",
-    "adapter_scope": "Instance-local frontend/Core submission wrappers and configured sync/async scheduler subclasses; no upstream wheel patch",
-    "dependency_lock_sha256": "b95c64f6357b653f3e1e45e7dddfe4b3efdcd8f9ae9ef926fce82dd7be025ec0",
-    "dependency_lock_identity_note": "Canonical LF Git blob and Linux deployment digest. The previous 26a4ea25fe806d69447ce1cd567f0a9b5ebcbf7994c39a83c2f7679da697a44f digest described the Windows CRLF worktree; dependency contents did not change.",
-    "source_checks": "tests/baseline/fixtures/vllm-0.31.0-resume-source.json",
-    "cpu_evidence": "evidence-index.json#continuation_cpu_candidate_20261111",
-    "runtime_status": "GPU runtime unqualified; server deployment and CPU preflight passed",
-    "server_deployment_commit": "c3af9088dc239dcfa6a317502bcfa7efd20daac6",
-    "server_cpu_evidence": "evidence-index.json#continuation_server_cpu_20261111"
+  "design_document": "engine-upgrade.md",
+  "evidence_index": "evidence-index.json",
+  "historical_record": {
+    "collection": "ServerlessLLM/2026-11-19-911747a",
+    "file": "docs/baseline/provenance.json",
+    "sha256": "583e0f5d6443ae2d4a6cf420df1e207e3a2ff79c0ddda3413e0921c9faf8ed3c"
   }
 }

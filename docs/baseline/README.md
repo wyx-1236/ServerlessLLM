@@ -1,22 +1,16 @@
 # ServerlessLLM-vLLM Baseline 工程入口
 
-本目录保存独立 Baseline 的升级设计、来源和证据索引。目标为 vLLM 0.31.0；
+本目录只保存维护所需的设计、安装、契约、兼容范围和精简证据索引。
+过程方案、历史审计和详细实验记录保存于仓库外的研究归档。目标为 vLLM 0.31.0；
 阶段 B 的原生 Store 流水线与阶段 C 的限定服务链已实测并通过用户阶段审查；
 D1 迁移链和 D2 两个限定续写场景已实测，阶段 D 审查及剩余边界、TP2 和模型/性能矩阵仍待完成。
 
 - [权威升级设计](engine-upgrade.md)：架构、兼容边界、阶段与验证要求。
-- [仓库建立指南](repository-bootstrap.md)：Fork、独立 clone、固定上游及分支。
 - [兼容范围](compatibility-matrix.md)：已验证事实与明确缺口。
 - [来源清单](provenance.json)：原始提交、分支和候选引擎身份。
 - [历史证据索引](evidence-index.json)：外部归档摘要及适用范围。
-- [契约与补丁审计](patch-audit.md)：继承行为、缺陷与配置映射边界。
-- [原版功能与规范核查](original-function-audit.md)：项目承诺、两个后端的迁移续写差异及全项目兼容缺口。
-- [迁移续写兼容方案](migration-continuation-proposal.md)：原版核查后的修订候选，保持既有功能，等待用户审查。
-- [活动请求恢复与交接增补](migration-continuation-engine-plan.md)：固定版本引擎恢复、请求所有权和 CPU/GPU 验证边界。
-- [EOS/停止字符串实机验收增补](migration-stopping-qualification-plan.md)：下一组场景与跨冻结边界证据要求，已批准实现及 CPU 检查，不包含 GPU 授权。
 - [Linux 环境](environment.md)：依赖锁、CPU 检查及候选镜像配方。
 - [服务生命周期](service-lifecycle.md)：后端/控制面所有权、关闭和手动限定验证入口。
-- [迁移生命周期执行计划](migration-lifecycle-plan.md)：D1 原版调用链和资源回收的 scoped delta；不是已验证迁移资格。
 - [Store 产物契约](store-artifact.md)：字节布局、逻辑张量视图和提交/复用校验。
 
 ## 仓库与部署身份
@@ -50,7 +44,7 @@ D2 提交 `6938fe1` 已通过 greedy 和 seeded-multi 同请求续写：5 个已
 
 阶段内按“改一部分、检查一部分、汇报一部分”的顺序推进。每次在聊天中逐文件
 说明改动、作用、前后行为、验证结果、兼容影响和未完成项，再进行下一部分；
-具体要求见根目录 AGENTS.md 和[升级设计](engine-upgrade.md#阶段内逐部分修改与汇报)。
+具体要求见根目录 AGENTS.md 和[升级设计](engine-upgrade.md)。
 
 每阶段完成后，在当前协作聊天中提交报告，等用户明确审查通过才开始下一阶段。
 报告列明改动、产物/commit、验证及缺失、方向偏差、资源状态和下一阶段范围。

@@ -119,7 +119,7 @@ These changes retain the original token replay algorithm and delta threshold.
 The final sampled sequence need not be replayed, and vLLM still lacks
 `resume_generate`: abort/cancel is not transparent continuation. LoRA argument
 compatibility does not qualify LoRA serving. See the
-[scoped plan](migration-lifecycle-plan.md) and
+[upgrade contract](engine-upgrade.md) and
 [CPU evidence](evidence-index.json#stage_d1_cpu_candidate).
 
 `scripts/baseline/qualify_migration.py` is a manual, separately approved
@@ -172,7 +172,7 @@ like existing debug history, and are absent when debug tracing is disabled.
 The final source snapshots, target histories, original HTTP attempt ledger,
 full control outputs, request accounting and target-specific cache counters
 are checked before success. An earlier active observation or a fresh HTTP
-request alone cannot pass. See the [bounded scenarios and exclusions](migration-continuation-engine-plan.md#同一-http-请求的首批实机验收入口).
+request alone cannot pass. See the [qualification limits](compatibility-matrix.md).
 `continuation-result.json` does not claim externally verified GPU release.
 An actual approved run and independently observed release remain required;
 the presence of this entry point is not runtime qualification.

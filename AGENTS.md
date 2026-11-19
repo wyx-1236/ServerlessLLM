@@ -72,3 +72,13 @@ Keep model weights, Store binaries, large results, dependency caches, and
 credentials outside Git. Record source identities and evidence scopes in
 `docs/baseline/provenance.json` and `docs/baseline/evidence-index.json`.
 Historical prototype results do not qualify the current integration commit.
+
+## Repository content boundary
+
+Keep production code, meaningful regression tests, required dependency locks,
+maintained technical contracts and concise compatibility/evidence indexes in Git.
+Keep personal research, stage reports, completed setup guides, superseded plans,
+raw experiment logs and generated runtime results outside the repository.
+Summarize evidence by immutable source/artifact identities and qualification
+limits; do not copy full run histories into provenance or design documents.
+Do not add a document when updating its existing owner is sufficient.
