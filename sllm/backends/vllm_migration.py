@@ -23,7 +23,7 @@ def merge_output(previous, output, *, freezing=False, delta=False):
         for index, choice in enumerate(getattr(previous, "outputs", []))
     }
     for index, choice in enumerate(output.outputs):
-        choice = copy.deepcopy(choice)
+        choice = resume_adapter.copy_output(choice)
         choice_index = getattr(choice, "index", index)
         old = choices.get(choice_index)
         if delta and old is not None:

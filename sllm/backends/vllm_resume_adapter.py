@@ -14,6 +14,31 @@ SCHEDULER_CLS = "sllm.backends.vllm_resume_scheduler.ResumeScheduler"
 ASYNC_SCHEDULER_CLS = "sllm.backends.vllm_resume_scheduler.ResumeAsyncScheduler"
 
 
+def copy_output(output):
+    """Copy output ownership without traversing flat scalar histories."""
+    rows = [
+        getattr(output, "logprobs", None),
+        getattr(output, "prompt_logprobs", None),
+    ]
+    rows.extend(
+        getattr(choice, "logprobs", None)
+        for choice in getattr(output, "outputs", ())
+    )
+    flat_rows = [
+        row for row in rows if row is not None and not isinstance(row, list)
+    ]
+    memo = {}
+    if flat_rows:
+        from vllm.logprobs import FlatLogprobs
+
+        # Native full slices own all six primitive lists. Other fields and
+        # legacy list logprobs retain standard deepcopy semantics.
+        memo = {
+            id(row): row[:] for row in flat_rows if type(row) is FlatLogprobs
+        }
+    return copy.deepcopy(output, memo)
+
+
 def configure_args(args):
     """Keep the upstream resolved sync/async choice and custom schedulers."""
     if getattr(args, "scheduler_cls", None) is None:
@@ -531,7 +556,7 @@ async def resume(engine, snapshot, internal_root):
                 continue
             if isinstance(output, Exception):
                 raise output
-            completion = copy.deepcopy(output.outputs[0])
+            completion = copy_output(output.outputs[0])
             completion.index = index
             current.outputs[index] = completion
             if output.prompt_logprobs is not None:
@@ -543,7 +568,7 @@ async def resume(engine, snapshot, internal_root):
             current.finished = all(
                 item.finish_reason is not None for item in current.outputs
             )
-            yield copy.deepcopy(current)
+            yield copy_output(current)
         if not current.finished:
             raise RuntimeError(
                 "Resumed generation ended without a terminal output"
