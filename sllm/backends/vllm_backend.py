@@ -47,7 +47,9 @@ def process_output(output: RequestOutput, model_name: str) -> Dict[str, Any]:
                 "role": "assistant",
                 "content": result.text,
             },
-            "logprobs": result.logprobs,
+            "logprobs": (
+                None if result.logprobs is None else list(result.logprobs)
+            ),
             "finish_reason": result.finish_reason,
         }
         for idx, result in enumerate(output.outputs)
@@ -226,6 +228,8 @@ class VllmBackend(NumericalQualificationMixin, VllmMigration, SllmBackend):
         if migration_tracked:
             async with self.status_lock:
                 self._migration_tracked.add(request_id)
+        # Keep cumulative logprob histories compact on the actor event loop.
+        data.setdefault("flat_logprobs", True)
         try:
             sampling_params = SamplingParams(**data)
         except Exception as error:

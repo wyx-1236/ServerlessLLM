@@ -171,6 +171,8 @@ class VllmMigration:
                         == 1
                     ),
                 )
+            # Ready outputs must not starve cancellation and freeze RPCs.
+            await asyncio.sleep(0)
 
     async def _run_generation(
         self, request_id, iterator_factory, process_output
