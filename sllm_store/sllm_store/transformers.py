@@ -223,7 +223,8 @@ def fully_parallel_load(
             model = _class.from_config(
                 config,
                 trust_remote_code=True,
-            ).to(config.torch_dtype)
+                dtype=config.torch_dtype,
+            )
         model.tie_weights()
         logger.debug(f"load model takes {time.time() - start} seconds")
 
@@ -299,8 +300,8 @@ def best_effort_load(
     with init_empty_weights():
         module = importlib.import_module("transformers")
         _class = getattr(module, hf_model_class)
-        model = _class.from_config(config, trust_remote_code=True).to(
-            config.torch_dtype
+        model = _class.from_config(
+            config, trust_remote_code=True, dtype=config.torch_dtype
         )
 
     model.tie_weights()
